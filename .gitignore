@@ -1,0 +1,101 @@
+# =========================
+# .NET / Build
+# =========================
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa]rm/
+[Aa]rm64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# =========================
+# Visual Studio
+# =========================
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+
+# =========================
+# JetBrains Rider / ReSharper
+# =========================
+.idea/
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# =========================
+# Environment / Secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Logs
+# =========================
+*.log
+*.binlog
+
+# =========================
+# Test results / Coverage
+# =========================
+[Tt]est[Rr]esult*/
+TestResult.xml
+test-results/
+coverage/
+CodeCoverage/
+*.coverage
+*.coveragexml
+
+# NUnit
+*.VisualState.xml
+nunit-*.xml
+
+# =========================
+# OS generated files
+# =========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =========================
+# Temporary files
+# =========================
+~$*
+*~
+*.tmp
+*.temp
+
+# =========================
+# Publish
+# =========================
+publish/
+*.publishsettings
+
+# =========================
+# ASP.NET Scaffolding
+# =========================
+ScaffoldingReadMe.txt
