@@ -2,16 +2,27 @@ namespace ThinhPhat.Api.Data.Entities;
 
 public enum DeliveryOrderStatus
 {
-    Draft = 1,              // Nháp / Chưa đẩy vận đơn
-    PendingPickup = 2,      // Chờ lấy hàng / Đã tiếp nhận
-    Picking = 3,            // Đang lấy hàng
-    InTransit = 4,          // Đang luân chuyển
-    Delivering = 5,         // Đang giao hàng
-    Delivered = 6,          // Giao thành công
-    DeliveryFailed = 7,     // Giao hàng thất bại
-    PendingRedelivery = 8,  // Chờ giao lại
-    Returning = 9,          // Đang chuyển hoàn
-    Returned = 10,          // Đã chuyển hoàn
-    Cancelled = 11,         // Đã huỷ đơn
-    LostOrDamaged = 12      // Thất lạc / Hư hại
+    Draft = 0,                                // Nháp
+    Cancelled = -1,                           // Hủy đơn hàng
+    Pending = 1,                              // Chưa tiếp nhận
+    Accepted = 2,                             // Đã tiếp nhận
+    PickedOrStocked = 3,                      // Đã lấy hàng/Đã nhập kho
+    Delivering = 4,                           // Đã điều phối giao hàng/Đang giao hàng
+    DeliveredUnreconciled = 5,                // Đã giao hàng/Chưa đối soát
+    Reconciled = 6,                           // Đã đối soát
+    CannotPick = 7,                           // Không lấy được hàng
+    DelayPick = 8,                            // Hoãn lấy hàng
+    CannotDeliver = 9,                        // Không giao được hàng
+    DelayDelivery = 10,                       // Delay giao hàng
+    ReturnReconciled = 11,                    // Đã đối soát công nợ trả hàng
+    Picking = 12,                             // Đã điều phối lấy hàng/Đang lấy hàng
+    Compensated = 13,                         // Đơn hàng bồi hoàn
+    Returning = 20,                           // Đang trả hàng (COD cầm hàng đi trả)
+    Returned = 21,                            // Đã trả hàng (COD đã trả xong hàng)
+    // ShipperReportedPicked = 123,              // Shipper báo đã lấy hàng
+    // ShipperReportedCannotPick = 127,          // Shipper (nhân viên lấy/giao hàng) báo không lấy được hàng
+    // ShipperReportedDelayPick = 128,           // Shipper báo delay lấy hàng
+    // ShipperReportedDelivered = 45,            // Shipper báo đã giao hàng
+    // ShipperReportedCannotDeliver = 49,        // Shipper báo không giao được giao hàng
+    // ShipperReportedDelayDelivery = 410        // Shipper báo delay giao hàng
 }

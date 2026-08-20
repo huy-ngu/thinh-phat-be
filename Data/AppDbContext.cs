@@ -18,6 +18,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<DeliveryOrder> DeliveryOrders => Set<DeliveryOrder>();
     public DbSet<DeliveryOrderStatusHistory> DeliveryOrderStatusHistories => Set<DeliveryOrderStatusHistory>();
+    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -196,6 +197,20 @@ public sealed class AppDbContext : DbContext
                   .WithMany(d => d.StatusHistories)
                   .HasForeignKey(h => h.DeliveryOrderId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Warehouse (Kho hàng) Configuration
+        modelBuilder.Entity<Warehouse>(entity =>
+        {
+            entity.ToTable("warehouses");
+            entity.HasKey(w => w.Id);
+            entity.Property(w => w.Name).HasMaxLength(200).IsRequired();
+            entity.Property(w => w.Address).HasMaxLength(300).IsRequired();
+            entity.Property(w => w.PhoneNumber).HasMaxLength(20).IsRequired();
+            entity.Property(w => w.CreatedAtUtc).HasDefaultValueSql("timezone('utc', now())");
+
+            entity.HasIndex(w => w.Name);
+            entity.HasIndex(w => w.PhoneNumber);
         });
     }
 }
