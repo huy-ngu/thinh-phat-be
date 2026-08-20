@@ -1,0 +1,64 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore
+
+      - name: Build Project
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Run Unit Tests
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: Install dotnet-ef Tool
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Generate Idempotent SQL Migration Script
+        run: dotnet ef migrations script --idempotent --output migrate.sql
+
+      - name: Upload Migration Script Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: migrate-sql
+          path: migrate.sql
+
+  deploy:
+    name: Deploy
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Migration Script Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: migrate-sql
+
+      - name: Apply Database Migrations
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          psql -h "${{ secrets.SUPABASE_DB_HOST }}" -U "${{ secrets.SUPABASE_DB_USER }}" -d "${{ secrets.SUPABASE_DB_NAME }}" -f migrate.sql
+
+      - name: Trigger Render Deployment
+        run: |
+          curl -f -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
