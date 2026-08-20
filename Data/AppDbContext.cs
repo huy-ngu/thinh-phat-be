@@ -169,10 +169,18 @@ public sealed class AppDbContext : DbContext
             // 5. OrderId: Tra cứu đơn giao hàng theo đơn chốt
             entity.HasIndex(d => d.OrderId);
 
+            // 6. WarehouseId: Tra cứu đơn giao hàng theo kho xuất hàng
+            entity.HasIndex(d => d.WarehouseId);
+
             // Relationships
             entity.HasOne(d => d.Order)
                   .WithMany()
                   .HasForeignKey(d => d.OrderId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(d => d.Warehouse)
+                  .WithMany()
+                  .HasForeignKey(d => d.WarehouseId)
                   .OnDelete(DeleteBehavior.SetNull);
         });
 

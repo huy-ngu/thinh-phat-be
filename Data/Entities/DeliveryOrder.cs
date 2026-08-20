@@ -4,6 +4,7 @@ public sealed class DeliveryOrder
 {
     public Guid Id { get; set; }
     public Guid? OrderId { get; set; }
+    public Guid? WarehouseId { get; set; }
     public string? GhtkId { get; set; }
     public DeliveryOrderStatus Status { get; set; } = DeliveryOrderStatus.Draft;
     public decimal TotalAmount { get; set; }
@@ -15,5 +16,6 @@ public sealed class DeliveryOrder
 
     // Navigation properties
     public Order? Order { get; set; }
+    public Warehouse? Warehouse { get; set; }
     public ICollection<DeliveryOrderStatusHistory> StatusHistories { get; set; } = new List<DeliveryOrderStatusHistory>();
 }

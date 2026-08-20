@@ -92,6 +92,9 @@ namespace ThinhPhat.Api.Migrations
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("WarehouseId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal>("Weight")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)");
@@ -105,6 +108,8 @@ namespace ThinhPhat.Api.Migrations
                     b.HasIndex("OrderId");
 
                     b.HasIndex("Status");
+
+                    b.HasIndex("WarehouseId");
 
                     b.HasIndex("Status", "CreatedAtUtc");
 
@@ -392,7 +397,14 @@ namespace ThinhPhat.Api.Migrations
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("ThinhPhat.Api.Data.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Order");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("ThinhPhat.Api.Data.Entities.DeliveryOrderStatusHistory", b =>
