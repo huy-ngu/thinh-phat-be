@@ -54,6 +54,95 @@ namespace ThinhPhat.Api.Migrations
                     b.ToTable("customers", (string)null);
                 });
 
+            modelBuilder.Entity("ThinhPhat.Api.Data.Entities.DeliveryOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<string>("GhtkId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ShippingFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("GhtkId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("Status", "CreatedAtUtc");
+
+                    b.ToTable("delivery_orders", (string)null);
+                });
+
+            modelBuilder.Entity("ThinhPhat.Api.Data.Entities.DeliveryOrderStatusHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<Guid>("DeliveryOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("DeliveryOrderId", "CreatedAtUtc");
+
+                    b.ToTable("delivery_order_status_histories", (string)null);
+                });
+
             modelBuilder.Entity("ThinhPhat.Api.Data.Entities.Order", b =>
                 {
                     b.Property<Guid>("Id")
@@ -258,6 +347,27 @@ namespace ThinhPhat.Api.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("ThinhPhat.Api.Data.Entities.DeliveryOrder", b =>
+                {
+                    b.HasOne("ThinhPhat.Api.Data.Entities.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("ThinhPhat.Api.Data.Entities.DeliveryOrderStatusHistory", b =>
+                {
+                    b.HasOne("ThinhPhat.Api.Data.Entities.DeliveryOrder", "DeliveryOrder")
+                        .WithMany("StatusHistories")
+                        .HasForeignKey("DeliveryOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DeliveryOrder");
+                });
+
             modelBuilder.Entity("ThinhPhat.Api.Data.Entities.Order", b =>
                 {
                     b.HasOne("ThinhPhat.Api.Data.Entities.Customer", "Customer")
@@ -297,6 +407,11 @@ namespace ThinhPhat.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("ThinhPhat.Api.Data.Entities.DeliveryOrder", b =>
+                {
+                    b.Navigation("StatusHistories");
                 });
 
             modelBuilder.Entity("ThinhPhat.Api.Data.Entities.Role", b =>

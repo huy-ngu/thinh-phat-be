@@ -16,3 +16,5 @@ public sealed class Order
     public Product? Product { get; set; }
     public Customer? Customer { get; set; }
 }
+
+

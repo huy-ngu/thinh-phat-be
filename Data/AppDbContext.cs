@@ -16,6 +16,8 @@ public sealed class AppDbContext : DbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Order> Orders => Set<Order>();
+    public DbSet<DeliveryOrder> DeliveryOrders => Set<DeliveryOrder>();
+    public DbSet<DeliveryOrderStatusHistory> DeliveryOrderStatusHistories => Set<DeliveryOrderStatusHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -135,6 +137,65 @@ public sealed class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(o => o.CustomerId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // DeliveryOrder (Đơn giao hàng) Configuration
+        modelBuilder.Entity<DeliveryOrder>(entity =>
+        {
+            entity.ToTable("delivery_orders");
+            entity.HasKey(d => d.Id);
+            entity.Property(d => d.GhtkId).HasMaxLength(100);
+            entity.Property(d => d.Status).HasConversion<string>().HasMaxLength(50).IsRequired();
+            entity.Property(d => d.TotalAmount).HasPrecision(18, 2).IsRequired();
+            entity.Property(d => d.ShippingFee).HasPrecision(18, 2).IsRequired();
+            entity.Property(d => d.Weight).HasPrecision(10, 2).IsRequired();
+            entity.Property(d => d.Note).HasMaxLength(500);
+            entity.Property(d => d.CreatedAtUtc).HasDefaultValueSql("timezone('utc', now())");
+
+            // Indexes quan trọng:
+            // 1. GhtkId: Tra cứu nhanh khi GHTK webhook gọi về hoặc khi nhân viên tìm theo mã GHTK
+            entity.HasIndex(d => d.GhtkId);
+
+            // 2. Status: Lọc danh sách đơn hàng theo trạng thái (Đang giao, Đã giao, Huỷ...)
+            entity.HasIndex(d => d.Status);
+
+            // 3. CreatedAtUtc: Sắp xếp và lọc đơn theo khoảng thời gian
+            entity.HasIndex(d => d.CreatedAtUtc);
+
+            // 4. (Status, CreatedAtUtc): Composite index tối ưu truy vấn lọc trạng thái kết hợp sắp xếp/phân trang theo thời gian
+            entity.HasIndex(d => new { d.Status, d.CreatedAtUtc });
+
+            // 5. OrderId: Tra cứu đơn giao hàng theo đơn chốt
+            entity.HasIndex(d => d.OrderId);
+
+            // Relationships
+            entity.HasOne(d => d.Order)
+                  .WithMany()
+                  .HasForeignKey(d => d.OrderId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // DeliveryOrderStatusHistory (Lịch sử trạng thái đơn hàng) Configuration
+        modelBuilder.Entity<DeliveryOrderStatusHistory>(entity =>
+        {
+            entity.ToTable("delivery_order_status_histories");
+            entity.HasKey(h => h.Id);
+            entity.Property(h => h.Status).HasConversion<string>().HasMaxLength(50).IsRequired();
+            entity.Property(h => h.Note).HasMaxLength(500);
+            entity.Property(h => h.CreatedAtUtc).HasDefaultValueSql("timezone('utc', now())");
+
+            // Indexes quan trọng:
+            // 1. (DeliveryOrderId, CreatedAtUtc): Lấy timeline lịch sử của 1 đơn giao hàng theo thứ tự thời gian cực nhanh
+            entity.HasIndex(h => new { h.DeliveryOrderId, h.CreatedAtUtc });
+
+            // 2. Status: Thống kê và tra cứu lịch sử thay đổi theo trạng thái
+            entity.HasIndex(h => h.Status);
+
+            // Relationship with DeliveryOrder
+            entity.HasOne(h => h.DeliveryOrder)
+                  .WithMany(d => d.StatusHistories)
+                  .HasForeignKey(h => h.DeliveryOrderId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
