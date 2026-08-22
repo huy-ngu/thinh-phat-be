@@ -11,6 +11,11 @@ public sealed class DeliveryOrder
     public decimal ShippingFee { get; set; }
     public decimal Weight { get; set; }
     public string? Note { get; set; }
+
+    // Thời gian lấy hàng và giao hàng dự kiến từ GHTK
+    public string? EstimatedPickTime { get; set; }
+    public string? EstimatedDeliverTime { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAtUtc { get; set; }
 

@@ -98,6 +98,8 @@ public static class UpdateDeliveryOrderStatusEndpoint
             ShippingFee: deliveryOrder.ShippingFee,
             Weight: deliveryOrder.Weight,
             Note: deliveryOrder.Note,
+            EstimatedPickTime: deliveryOrder.EstimatedPickTime,
+            EstimatedDeliverTime: deliveryOrder.EstimatedDeliverTime,
             CreatedAtUtc: deliveryOrder.CreatedAtUtc,
             UpdatedAtUtc: deliveryOrder.UpdatedAtUtc
         );

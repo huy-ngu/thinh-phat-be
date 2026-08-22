@@ -151,6 +151,8 @@ public sealed class AppDbContext : DbContext
             entity.Property(d => d.ShippingFee).HasPrecision(18, 2).IsRequired();
             entity.Property(d => d.Weight).HasPrecision(10, 2).IsRequired();
             entity.Property(d => d.Note).HasMaxLength(500);
+            entity.Property(d => d.EstimatedPickTime).HasMaxLength(100);
+            entity.Property(d => d.EstimatedDeliverTime).HasMaxLength(100);
             entity.Property(d => d.CreatedAtUtc).HasDefaultValueSql("timezone('utc', now())");
 
             // Indexes quan trọng:

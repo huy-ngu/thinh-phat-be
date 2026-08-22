@@ -13,10 +13,7 @@ namespace ThinhPhat.Api.Features.DeliveryOrders.CreateDeliveryOrder;
 public sealed record CreateDeliveryOrderRequest(
     Guid? OrderId,
     Guid? WarehouseId,
-    string? GhtkId,
-    DeliveryOrderStatus Status = DeliveryOrderStatus.Draft,
     decimal TotalAmount = 0m,
-    decimal ShippingFee = 0m,
     decimal Weight = 0m,
     string? Note = null
 );
@@ -33,6 +30,8 @@ public sealed record DeliveryOrderDto(
     decimal ShippingFee,
     decimal Weight,
     string? Note,
+    string? EstimatedPickTime,
+    string? EstimatedDeliverTime,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc
 );
@@ -51,20 +50,11 @@ public sealed class CreateDeliveryOrderValidator : AbstractValidator<CreateDeliv
 {
     public CreateDeliveryOrderValidator()
     {
-        RuleFor(x => x.Status)
-            .IsInEnum().WithMessage("Invalid delivery order status.");
-
         RuleFor(x => x.TotalAmount)
             .GreaterThanOrEqualTo(0).WithMessage("Total amount must be greater than or equal to 0.");
 
-        RuleFor(x => x.ShippingFee)
-            .GreaterThanOrEqualTo(0).WithMessage("Shipping fee must be greater than or equal to 0.");
-
         RuleFor(x => x.Weight)
             .GreaterThanOrEqualTo(0).WithMessage("Weight must be greater than or equal to 0.");
-
-        RuleFor(x => x.GhtkId)
-            .MaximumLength(100).WithMessage("GhtkId must not exceed 100 characters.");
 
         RuleFor(x => x.Note)
             .MaximumLength(500).WithMessage("Note must not exceed 500 characters.");
@@ -130,22 +120,24 @@ public static class CreateDeliveryOrderEndpoint
             warehouseName = warehouse.Name;
         }
 
-        // 3. Tạo DeliveryOrder
+        // 3. Tạo DeliveryOrder với giá trị mặc định: GhtkId = null, ShippingFee = 0, Estimated times = null
         var deliveryOrder = new DeliveryOrder
         {
             Id = Guid.NewGuid(),
             OrderId = request.OrderId,
             WarehouseId = request.WarehouseId,
-            GhtkId = request.GhtkId?.Trim(),
-            Status = request.Status,
+            GhtkId = null,
+            Status = DeliveryOrderStatus.Draft,
             TotalAmount = request.TotalAmount,
-            ShippingFee = request.ShippingFee,
+            ShippingFee = 0m,
             Weight = request.Weight,
             Note = request.Note?.Trim(),
+            EstimatedPickTime = null,
+            EstimatedDeliverTime = null,
             CreatedAtUtc = DateTime.UtcNow
         };
 
-        // 4. Tự động ghi nhận lịch sử trạng thái ban đầu (Business Logic)
+        // 4. Tự động ghi nhận lịch sử trạng thái ban đầu
         var initialHistory = new DeliveryOrderStatusHistory
         {
             Id = Guid.NewGuid(),
@@ -171,6 +163,8 @@ public static class CreateDeliveryOrderEndpoint
             ShippingFee: deliveryOrder.ShippingFee,
             Weight: deliveryOrder.Weight,
             Note: deliveryOrder.Note,
+            EstimatedPickTime: deliveryOrder.EstimatedPickTime,
+            EstimatedDeliverTime: deliveryOrder.EstimatedDeliverTime,
             CreatedAtUtc: deliveryOrder.CreatedAtUtc,
             UpdatedAtUtc: deliveryOrder.UpdatedAtUtc
         );

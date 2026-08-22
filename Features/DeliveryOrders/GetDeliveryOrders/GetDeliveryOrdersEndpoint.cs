@@ -101,6 +101,8 @@ public static class GetDeliveryOrdersEndpoint
                 d.ShippingFee,
                 d.Weight,
                 d.Note,
+                d.EstimatedPickTime,
+                d.EstimatedDeliverTime,
                 d.CreatedAtUtc,
                 d.UpdatedAtUtc
             ))

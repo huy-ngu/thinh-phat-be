@@ -23,6 +23,8 @@ public sealed record DeliveryOrderDetailDto(
     decimal ShippingFee,
     decimal Weight,
     string? Note,
+    string? EstimatedPickTime,
+    string? EstimatedDeliverTime,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc,
     List<DeliveryOrderStatusHistoryDto> StatusHistories
@@ -121,6 +123,8 @@ public static class GetDeliveryOrderByIdEndpoint
             ShippingFee: deliveryOrder.ShippingFee,
             Weight: deliveryOrder.Weight,
             Note: deliveryOrder.Note,
+            EstimatedPickTime: deliveryOrder.EstimatedPickTime,
+            EstimatedDeliverTime: deliveryOrder.EstimatedDeliverTime,
             CreatedAtUtc: deliveryOrder.CreatedAtUtc,
             UpdatedAtUtc: deliveryOrder.UpdatedAtUtc,
             StatusHistories: historyDtos
