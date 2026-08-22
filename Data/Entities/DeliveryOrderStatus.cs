@@ -19,10 +19,10 @@ public enum DeliveryOrderStatus
     Compensated = 13,                         // Đơn hàng bồi hoàn
     Returning = 20,                           // Đang trả hàng (COD cầm hàng đi trả)
     Returned = 21,                            // Đã trả hàng (COD đã trả xong hàng)
-    // ShipperReportedPicked = 123,              // Shipper báo đã lấy hàng
-    // ShipperReportedCannotPick = 127,          // Shipper (nhân viên lấy/giao hàng) báo không lấy được hàng
-    // ShipperReportedDelayPick = 128,           // Shipper báo delay lấy hàng
-    // ShipperReportedDelivered = 45,            // Shipper báo đã giao hàng
-    // ShipperReportedCannotDeliver = 49,        // Shipper báo không giao được giao hàng
-    // ShipperReportedDelayDelivery = 410        // Shipper báo delay giao hàng
+    ShipperReportedPicked = 123,              // Shipper báo đã lấy hàng
+    ShipperReportedCannotPick = 127,          // Shipper (nhân viên lấy/giao hàng) báo không lấy được hàng
+    ShipperReportedDelayPick = 128,           // Shipper báo delay lấy hàng
+    ShipperReportedDelivered = 45,            // Shipper báo đã giao hàng
+    ShipperReportedCannotDeliver = 49,        // Shipper báo không giao được hàng
+    ShipperReportedDelayDelivery = 410        // Shipper báo delay giao hàng
 }

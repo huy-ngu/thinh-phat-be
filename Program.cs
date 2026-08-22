@@ -13,13 +13,17 @@ using Microsoft.OpenApi;
 using ThinhPhat.Api.Data;
 using ThinhPhat.Api.Features.Auth;
 using ThinhPhat.Api.Features.Customers;
+using ThinhPhat.Api.Features.DeliveryOrders;
+using ThinhPhat.Api.Features.Ghtk;
 using ThinhPhat.Api.Features.Orders;
 using ThinhPhat.Api.Features.Products;
 using ThinhPhat.Api.Features.Users;
+using ThinhPhat.Api.Features.Warehouses;
 using ThinhPhat.Api.Shared.Constants;
 using ThinhPhat.Api.Shared.Errors;
 using ThinhPhat.Api.Shared.Security;
 using ThinhPhat.Api.Shared.Services.Cloudinary;
+using ThinhPhat.Api.Shared.Services.Ghtk;
 
 var builder = WebApplication.CreateBuilder(args);
 //test deploy
@@ -169,6 +173,16 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.Configure<CloudinaryOptions>(builder.Configuration.GetSection(CloudinaryOptions.SectionName));
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 
+// Register GHTK Service
+builder.Services.Configure<GhtkOptions>(builder.Configuration.GetSection(GhtkOptions.SectionName));
+builder.Services.AddHttpClient<IGhtkService, GhtkService>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<GhtkOptions>>().Value;
+    var baseUrl = string.IsNullOrWhiteSpace(options.BaseUrl) ? "https://services.giaohangtietkiem.vn" : options.BaseUrl.TrimEnd('/') + "/";
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
 
@@ -226,5 +240,8 @@ app.MapUserEndpoints();
 app.MapCustomerEndpoints();
 app.MapProductEndpoints();
 app.MapOrderEndpoints();
+app.MapWarehouseEndpoints();
+app.MapDeliveryOrderEndpoints();
+app.MapGhtkEndpoints();
 
 app.Run();
