@@ -12,8 +12,11 @@ public static class DeleteDeliveryOrderStatusHistoryEndpoint
     {
         group.MapDelete("/{deliveryOrderId:guid}/histories/{id:guid}", HandleAsync)
             .WithName("DeleteDeliveryOrderStatusHistory")
-            .WithSummary("Deletes a specific status history record")
+            .WithSummary("Deletes a specific status history record (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         return group;

@@ -51,9 +51,12 @@ public static class UpdateDeliveryOrderEndpoint
     {
         group.MapPut("/{id:guid}", HandleAsync)
             .WithName("UpdateDeliveryOrder")
-            .WithSummary("Updates an existing delivery order and logs status changes to history if status is modified")
+            .WithSummary("Updates an existing delivery order and logs status changes to history if status is modified (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .WithRequestValidation<UpdateDeliveryOrderRequest>()
             .Produces<DeliveryOrderDto>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 

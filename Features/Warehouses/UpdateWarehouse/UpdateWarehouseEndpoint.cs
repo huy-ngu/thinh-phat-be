@@ -40,9 +40,12 @@ public static class UpdateWarehouseEndpoint
     {
         group.MapPut("/{id:guid}", HandleAsync)
             .WithName("UpdateWarehouse")
-            .WithSummary("Updates an existing warehouse")
+            .WithSummary("Updates an existing warehouse (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .WithRequestValidation<UpdateWarehouseRequest>()
             .Produces<WarehouseDto>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);

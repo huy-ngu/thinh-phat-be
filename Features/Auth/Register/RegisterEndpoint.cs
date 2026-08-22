@@ -9,17 +9,17 @@ using ThinhPhat.Api.Shared.Constants;
 using ThinhPhat.Api.Shared.Filters;
 using ThinhPhat.Api.Shared.Security;
 
-namespace ThinhPhat.Api.Features.Users.RegisterUser;
+namespace ThinhPhat.Api.Features.Auth.Register;
 
 // 1. Request DTO
-public sealed record RegisterUserRequest(
+public sealed record RegisterRequest(
     string Email,
     string Password,
     string FullName
 );
 
 // 2. Response DTO
-public sealed record RegisterUserResponse(
+public sealed record RegisterResponse(
     Guid Id,
     string Email,
     string FullName,
@@ -28,9 +28,9 @@ public sealed record RegisterUserResponse(
 );
 
 // 3. Request Validator (FluentValidation)
-public sealed class RegisterUserValidator : AbstractValidator<RegisterUserRequest>
+public sealed class RegisterValidator : AbstractValidator<RegisterRequest>
 {
-    public RegisterUserValidator()
+    public RegisterValidator()
     {
         RuleFor(x => x.Email)
             .NotEmpty().WithMessage("Email is required.")
@@ -52,16 +52,19 @@ public sealed class RegisterUserValidator : AbstractValidator<RegisterUserReques
 }
 
 // 4. Endpoint Registration & Handler (Vertical Slice)
-public static class RegisterUserEndpoint
+public static class RegisterEndpoint
 {
-    public static RouteGroupBuilder MapRegisterUser(this RouteGroupBuilder group)
+    public static RouteGroupBuilder MapRegister(this RouteGroupBuilder group)
     {
         group.MapPost("/register", HandleAsync)
-            .WithName("RegisterUser")
-            .WithSummary("Registers a new user account")
+            .WithName("Register")
+            .WithSummary("Registers a new user account (Admin only)")
             .WithDescription("Creates a new user account with a hashed password and assigns default User role.")
-            .WithRequestValidation<RegisterUserRequest>()
-            .Produces<RegisterUserResponse>(StatusCodes.Status201Created)
+            .RequireAuthorization("AdminOnly")
+            .WithRequestValidation<RegisterRequest>()
+            .Produces<RegisterResponse>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
@@ -69,14 +72,14 @@ public static class RegisterUserEndpoint
     }
 
     public static async Task<IResult> HandleAsync(
-        RegisterUserRequest request,
+        RegisterRequest request,
         AppDbContext db,
         IPasswordHasher passwordHasher,
         CancellationToken cancellationToken)
     {
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
-        // 1. Zero-allocation read check (AsNoTracking projection to avoid EF Core Change Tracker overhead)
+        // 1. Zero-allocation read check (AsNoTracking)
         var emailExists = await db.Users
             .AsNoTracking()
             .AnyAsync(u => u.Email == normalizedEmail, cancellationToken);
@@ -93,7 +96,7 @@ public static class RegisterUserEndpoint
         // 2. Hash password statelessly
         var passwordHash = passwordHasher.Hash(request.Password);
 
-        // 3. Manual Mapping to Entities (Zero dynamic reflection / No AutoMapper)
+        // 3. Manual Mapping to Entities
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -109,7 +112,7 @@ public static class RegisterUserEndpoint
         await db.SaveChangesAsync(cancellationToken);
 
         // 5. Manual Mapping from Entity to Response DTO
-        var response = new RegisterUserResponse(
+        var response = new RegisterResponse(
             Id: user.Id,
             Email: user.Email,
             FullName: user.FullName,
@@ -117,6 +120,6 @@ public static class RegisterUserEndpoint
             CreatedAtUtc: user.CreatedAtUtc
         );
 
-        return TypedResults.Created($"/api/v1/users/{user.Id}", response);
+        return TypedResults.Created($"/api/v1/auth/me", response);
     }
 }

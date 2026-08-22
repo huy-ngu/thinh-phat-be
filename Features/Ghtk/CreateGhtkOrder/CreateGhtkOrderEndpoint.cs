@@ -63,10 +63,13 @@ public static class CreateGhtkOrderEndpoint
     {
         group.MapPost("/shipment/order", HandleAsync)
             .WithName("CreateGhtkOrder")
-            .WithSummary("Creates a shipping order directly on GHTK (Giao Hàng Tiết Kiệm)")
+            .WithSummary("Creates a shipping order directly on GHTK (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .WithRequestValidation<GhtkCreateOrderRequest>()
             .Produces<GhtkCreateOrderResponse>(StatusCodes.Status200OK)
             .Produces<GhtkCreateOrderResponse>(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
         return group;

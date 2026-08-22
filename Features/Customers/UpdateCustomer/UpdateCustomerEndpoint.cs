@@ -38,9 +38,12 @@ public static class UpdateCustomerEndpoint
     {
         group.MapPut("/{id:guid}", HandleAsync)
             .WithName("UpdateCustomer")
-            .WithSummary("Updates customer information")
+            .WithSummary("Updates customer information (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .WithRequestValidation<UpdateCustomerRequest>()
             .Produces<CustomerDto>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);

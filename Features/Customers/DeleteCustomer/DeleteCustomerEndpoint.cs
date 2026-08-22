@@ -12,8 +12,11 @@ public static class DeleteCustomerEndpoint
     {
         group.MapDelete("/{id:guid}", HandleAsync)
             .WithName("DeleteCustomer")
-            .WithSummary("Deletes a customer and all associated addresses")
+            .WithSummary("Deletes a customer and all associated addresses (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         return group;

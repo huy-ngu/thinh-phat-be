@@ -33,9 +33,12 @@ public static class CreateDeliveryOrderStatusHistoryEndpoint
     {
         group.MapPost("/{deliveryOrderId:guid}/histories", HandleAsync)
             .WithName("CreateDeliveryOrderStatusHistory")
-            .WithSummary("Creates a new status history record and automatically syncs the delivery order status")
+            .WithSummary("Creates a new status history record and automatically syncs the delivery order status (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .WithRequestValidation<CreateDeliveryOrderStatusHistoryRequest>()
             .Produces<DeliveryOrderStatusHistoryDto>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
