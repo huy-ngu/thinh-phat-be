@@ -58,13 +58,10 @@ public static class RegisterEndpoint
     {
         group.MapPost("/register", HandleAsync)
             .WithName("Register")
-            .WithSummary("Registers a new user account (Admin only)")
+            .WithSummary("Registers a new user account")
             .WithDescription("Creates a new user account with a hashed password and assigns default User role.")
-            .RequireAuthorization("AdminOnly")
             .WithRequestValidation<RegisterRequest>()
             .Produces<RegisterResponse>(StatusCodes.Status201Created)
-            .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
