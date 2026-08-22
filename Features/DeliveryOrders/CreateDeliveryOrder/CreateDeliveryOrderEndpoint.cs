@@ -191,6 +191,12 @@ public static class CreateDeliveryOrderEndpoint
         DeliveryOrderStatus.Compensated => "Đơn hàng bồi hoàn",
         DeliveryOrderStatus.Returning => "Đang trả hàng (COD cầm hàng đi trả)",
         DeliveryOrderStatus.Returned => "Đã trả hàng (COD đã trả xong hàng)",
+        DeliveryOrderStatus.ShipperReportedPicked => "Shipper báo đã lấy hàng",
+        DeliveryOrderStatus.ShipperReportedCannotPick => "Shipper báo không lấy được hàng",
+        DeliveryOrderStatus.ShipperReportedDelayPick => "Shipper báo delay lấy hàng",
+        DeliveryOrderStatus.ShipperReportedDelivered => "Shipper báo đã giao hàng",
+        DeliveryOrderStatus.ShipperReportedCannotDeliver => "Shipper báo không giao được hàng",
+        DeliveryOrderStatus.ShipperReportedDelayDelivery => "Shipper báo delay giao hàng",
         _ => status.ToString()
     };
 }

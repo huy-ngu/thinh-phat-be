@@ -7,4 +7,5 @@ public sealed class GhtkOptions
     public string BaseUrl { get; set; } = "https://services.giaohangtietkiem.vn";
     public string ApiToken { get; set; } = string.Empty;
     public string? PartnerCode { get; set; }
+    public string? WebhookHash { get; set; }
 }
