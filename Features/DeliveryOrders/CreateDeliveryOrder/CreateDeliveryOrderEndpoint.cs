@@ -68,10 +68,13 @@ public static class CreateDeliveryOrderEndpoint
     {
         group.MapPost("/", HandleAsync)
             .WithName("CreateDeliveryOrder")
-            .WithSummary("Creates a new delivery order with initial status history")
+            .WithSummary("Creates a new delivery order with initial status history (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .WithRequestValidation<CreateDeliveryOrderRequest>()
             .Produces<DeliveryOrderDto>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 

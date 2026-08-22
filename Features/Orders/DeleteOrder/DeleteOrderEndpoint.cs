@@ -12,8 +12,11 @@ public static class DeleteOrderEndpoint
     {
         group.MapDelete("/{id:guid}", HandleAsync)
             .WithName("DeleteOrder")
-            .WithSummary("Deletes a closing order by ID")
+            .WithSummary("Deletes a closing order by ID (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         return group;

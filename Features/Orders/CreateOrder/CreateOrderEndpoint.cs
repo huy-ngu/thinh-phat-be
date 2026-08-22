@@ -70,10 +70,13 @@ public static class CreateOrderEndpoint
     {
         group.MapPost("/", HandleAsync)
             .WithName("CreateOrder")
-            .WithSummary("Creates a new closing order (Đơn chốt)")
+            .WithSummary("Creates a new closing order (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .WithRequestValidation<CreateOrderRequest>()
             .Produces<OrderDto>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 

@@ -12,8 +12,11 @@ public static class DeleteWarehouseEndpoint
     {
         group.MapDelete("/{id:guid}", HandleAsync)
             .WithName("DeleteWarehouse")
-            .WithSummary("Deletes a warehouse by its ID")
+            .WithSummary("Deletes a warehouse by its ID (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         return group;

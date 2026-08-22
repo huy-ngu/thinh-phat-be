@@ -53,10 +53,13 @@ public static class UpdateOrderEndpoint
     {
         group.MapPut("/{id:guid}", HandleAsync)
             .WithName("UpdateOrder")
-            .WithSummary("Updates closing order details")
+            .WithSummary("Updates closing order details (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .WithRequestValidation<UpdateOrderRequest>()
             .Produces<OrderDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 

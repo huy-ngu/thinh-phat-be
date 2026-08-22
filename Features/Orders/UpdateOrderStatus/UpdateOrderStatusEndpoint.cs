@@ -33,9 +33,12 @@ public static class UpdateOrderStatusEndpoint
     {
         group.MapPatch("/{id:guid}/status", HandleAsync)
             .WithName("UpdateOrderStatus")
-            .WithSummary("Quickly updates order status (Mới tạo, Chốt đơn, Không nghe máy, Không mua, Đã up đơn, Hết hàng)")
+            .WithSummary("Quickly updates order status (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .WithRequestValidation<UpdateOrderStatusRequest>()
             .Produces<OrderDto>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 

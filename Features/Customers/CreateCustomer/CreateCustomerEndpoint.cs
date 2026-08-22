@@ -46,9 +46,12 @@ public static class CreateCustomerEndpoint
     {
         group.MapPost("/", HandleAsync)
             .WithName("CreateCustomer")
-            .WithSummary("Creates a new customer with a unique phone number")
+            .WithSummary("Creates a new customer with a unique phone number (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .WithRequestValidation<CreateCustomerRequest>()
             .Produces<CustomerDto>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 

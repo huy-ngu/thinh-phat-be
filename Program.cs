@@ -17,7 +17,6 @@ using ThinhPhat.Api.Features.DeliveryOrders;
 using ThinhPhat.Api.Features.Ghtk;
 using ThinhPhat.Api.Features.Orders;
 using ThinhPhat.Api.Features.Products;
-using ThinhPhat.Api.Features.Users;
 using ThinhPhat.Api.Features.Warehouses;
 using ThinhPhat.Api.Shared.Constants;
 using ThinhPhat.Api.Shared.Errors;
@@ -236,7 +235,6 @@ app.MapHealthChecks("/healthz");
 
 // Register Feature Slices
 app.MapAuthEndpoints();
-app.MapUserEndpoints();
 app.MapCustomerEndpoints();
 app.MapProductEndpoints();
 app.MapOrderEndpoints();

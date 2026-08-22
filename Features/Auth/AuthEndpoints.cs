@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Routing;
 using ThinhPhat.Api.Features.Auth.GetMe;
 using ThinhPhat.Api.Features.Auth.Login;
 using ThinhPhat.Api.Features.Auth.RefreshToken;
+using ThinhPhat.Api.Features.Auth.Register;
 using ThinhPhat.Api.Features.Auth.RevokeToken;
 
 namespace ThinhPhat.Api.Features.Auth;
@@ -15,6 +16,7 @@ public static class AuthEndpoints
             .WithTags("Auth");
 
         group.MapLogin();
+        group.MapRegister();
         group.MapRefreshToken();
         group.MapRevokeToken();
         group.MapGetMe();

@@ -52,9 +52,12 @@ public static class CreateWarehouseEndpoint
     {
         group.MapPost("/", HandleAsync)
             .WithName("CreateWarehouse")
-            .WithSummary("Creates a new warehouse")
+            .WithSummary("Creates a new warehouse (Admin only)")
+            .RequireAuthorization("AdminOnly")
             .WithRequestValidation<CreateWarehouseRequest>()
             .Produces<WarehouseDto>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
