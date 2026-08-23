@@ -97,15 +97,16 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // ==========================================
-// 3. CORS (BẮT BUỘC CHO PUBLIC API)
+// 3. CORS (CHO PHÉP TẤT CẢ DOMAIN / PUBLIC / CREDENTIALS)
 // ==========================================
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("https://your-frontend-domain.com")
+        policy.SetIsOriginAllowed(_ => true)
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -216,6 +217,9 @@ var app = builder.Build();
 // ==========================================
 // 7. PIPELINE MIDDLEWARES (Thứ tự CỰC KỲ QUAN TRỌNG)
 // ==========================================
+app.UseExceptionHandler();
+app.UseCors("AllowAll");
+
 app.UseResponseCompression();
 app.UseRateLimiter();
 
@@ -224,9 +228,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseExceptionHandler();
-app.UseCors("AllowFrontend");
 
 app.UseAuthentication(); // 1. Xác thực danh tính
 app.UseAuthorization();  // 2. Phân quyền
