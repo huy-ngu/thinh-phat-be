@@ -10,6 +10,7 @@ RUN dotnet publish "ThinhPhat.Api.csproj" -c Release -o /app/publish --no-restor
 
 # Stage 2: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
+RUN apk add --no-cache krb5-libs
 WORKDIR /app
 COPY --from=build /app/publish .
 
