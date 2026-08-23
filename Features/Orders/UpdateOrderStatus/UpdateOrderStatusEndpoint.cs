@@ -33,7 +33,7 @@ public static class UpdateOrderStatusEndpoint
     {
         group.MapPatch("/{id:guid}/status", HandleAsync)
             .WithName("UpdateOrderStatus")
-            .WithSummary("Quickly updates order status (Admin only)")
+            .WithSummary("Quickly updates order status with audit timeline logging (Admin only)")
             .RequireAuthorization("AdminOnly")
             .WithRequestValidation<UpdateOrderStatusRequest>()
             .Produces<OrderDto>(StatusCodes.Status200OK)
@@ -51,7 +51,10 @@ public static class UpdateOrderStatusEndpoint
         AppDbContext db,
         CancellationToken cancellationToken)
     {
-        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
+        var order = await db.Orders
+            .Include(o => o.StatusHistories)
+            .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
+
         if (order is null)
         {
             return TypedResults.Problem(
@@ -61,6 +64,20 @@ public static class UpdateOrderStatusEndpoint
             );
         }
 
+        var statusDisplayName = CreateOrderEndpoint.GetStatusDisplayName(request.Status);
+        var historyNote = string.IsNullOrWhiteSpace(request.Note)
+            ? $"Chuyển trạng thái: {statusDisplayName}"
+            : $"Chuyển trạng thái: {statusDisplayName} | Ghi chú: {request.Note.Trim()}";
+
+        var history = new OrderStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            Status = request.Status,
+            Note = historyNote,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
         order.Status = request.Status;
         if (!string.IsNullOrWhiteSpace(request.Note))
         {
@@ -68,29 +85,57 @@ public static class UpdateOrderStatusEndpoint
         }
         order.UpdatedAtUtc = DateTime.UtcNow;
 
+        await db.OrderStatusHistories.AddAsync(history, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 
-        var response = await db.Orders
+        var refreshedOrder = await db.Orders
             .AsNoTracking()
-            .Where(o => o.Id == id)
-            .Select(o => new OrderDto(
-                o.Id,
-                o.ProductId,
-                o.Product != null ? o.Product.Name : string.Empty,
-                o.Product != null ? o.Product.Price : 0m,
-                o.Product != null ? o.Product.ImageUrl : string.Empty,
-                o.CustomerId,
-                o.Customer != null ? o.Customer.Name : string.Empty,
-                o.Customer != null ? o.Customer.PhoneNumber : string.Empty,
-                o.Address,
-                o.TotalAmount,
-                o.Status,
-                CreateOrderEndpoint.GetStatusDisplayName(o.Status),
-                o.Note,
-                o.CreatedAtUtc,
-                o.UpdatedAtUtc
-            ))
-            .FirstAsync(cancellationToken);
+            .Include(o => o.Customer)
+            .Include(o => o.Warehouse)
+            .Include(o => o.Items)
+                .ThenInclude(i => i.Product)
+            .Include(o => o.StatusHistories)
+            .FirstAsync(o => o.Id == id, cancellationToken);
+
+        var response = new OrderDto(
+            Id: refreshedOrder.Id,
+            CustomerId: refreshedOrder.CustomerId,
+            CustomerName: refreshedOrder.Customer?.Name ?? string.Empty,
+            CustomerPhone: refreshedOrder.Customer?.PhoneNumber ?? string.Empty,
+            WarehouseId: refreshedOrder.WarehouseId,
+            WarehouseName: refreshedOrder.Warehouse?.Name,
+            Address: refreshedOrder.Address,
+            TotalAmount: refreshedOrder.TotalAmount,
+            ShippingFee: refreshedOrder.ShippingFee,
+            Weight: refreshedOrder.Weight,
+            Status: refreshedOrder.Status,
+            StatusName: CreateOrderEndpoint.GetStatusDisplayName(refreshedOrder.Status),
+            Note: refreshedOrder.Note,
+            GhtkId: refreshedOrder.GhtkId,
+            EstimatedPickTime: refreshedOrder.EstimatedPickTime,
+            EstimatedDeliverTime: refreshedOrder.EstimatedDeliverTime,
+            Items: refreshedOrder.Items.Select(i => new OrderItemDto(
+                Id: i.Id,
+                ProductId: i.ProductId,
+                ProductName: i.Product?.Name ?? string.Empty,
+                ProductPrice: i.Product?.Price ?? 0m,
+                ProductImageUrl: i.Product?.ImageUrl ?? string.Empty,
+                Quantity: i.Quantity,
+                UnitPrice: i.UnitPrice,
+                TotalPrice: i.TotalPrice
+            )).ToList(),
+            StatusHistories: refreshedOrder.StatusHistories
+                .OrderByDescending(h => h.CreatedAtUtc)
+                .Select(h => new OrderStatusHistoryDto(
+                    Id: h.Id,
+                    Status: h.Status,
+                    StatusName: CreateOrderEndpoint.GetStatusDisplayName(h.Status),
+                    Note: h.Note,
+                    CreatedAtUtc: h.CreatedAtUtc
+                )).ToList(),
+            CreatedAtUtc: refreshedOrder.CreatedAtUtc,
+            UpdatedAtUtc: refreshedOrder.UpdatedAtUtc
+        );
 
         return TypedResults.Ok(response);
     }

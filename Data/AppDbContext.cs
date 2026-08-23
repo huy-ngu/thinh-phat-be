@@ -16,8 +16,8 @@ public sealed class AppDbContext : DbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Order> Orders => Set<Order>();
-    public DbSet<DeliveryOrder> DeliveryOrders => Set<DeliveryOrder>();
-    public DbSet<DeliveryOrderStatusHistory> DeliveryOrderStatusHistories => Set<DeliveryOrderStatusHistory>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -107,106 +107,89 @@ public sealed class AppDbContext : DbContext
             entity.HasKey(p => p.Id);
             entity.Property(p => p.Name).HasMaxLength(200).IsRequired();
             entity.Property(p => p.Price).HasPrecision(18, 2).IsRequired();
+            entity.Property(p => p.CostPrice).HasPrecision(18, 2).HasDefaultValue(0m);
             entity.Property(p => p.ImageUrl).HasMaxLength(500).IsRequired();
             entity.Property(p => p.ImagePublicId).HasMaxLength(200);
             entity.Property(p => p.CreatedAtUtc).HasDefaultValueSql("timezone('utc', now())");
             entity.HasIndex(p => p.Name);
         });
 
-        // Order (Đơn chốt) Configuration
+        // Order (Đơn hàng tích hợp Telesale & GHTK) Configuration
         modelBuilder.Entity<Order>(entity =>
         {
             entity.ToTable("orders");
             entity.HasKey(o => o.Id);
             entity.Property(o => o.Address).HasMaxLength(300).IsRequired();
             entity.Property(o => o.TotalAmount).HasPrecision(18, 2).IsRequired();
-            entity.Property(o => o.Status).HasConversion<string>().HasMaxLength(30).IsRequired();
+            entity.Property(o => o.ShippingFee).HasPrecision(18, 2).IsRequired();
+            entity.Property(o => o.Weight).HasPrecision(10, 2).IsRequired();
+            entity.Property(o => o.GhtkId).HasMaxLength(100);
+            entity.Property(o => o.EstimatedPickTime).HasMaxLength(100);
+            entity.Property(o => o.EstimatedDeliverTime).HasMaxLength(100);
+            entity.Property(o => o.Status).HasConversion<string>().HasMaxLength(50).IsRequired();
             entity.Property(o => o.Note).HasMaxLength(500);
             entity.Property(o => o.CreatedAtUtc).HasDefaultValueSql("timezone('utc', now())");
 
+            // Indexes
             entity.HasIndex(o => o.Status);
-            entity.HasIndex(o => new { o.CustomerId, o.CreatedAtUtc });
-            entity.HasIndex(o => new { o.ProductId, o.CreatedAtUtc });
+            entity.HasIndex(o => o.GhtkId);
+            entity.HasIndex(o => o.CustomerId);
+            entity.HasIndex(o => o.WarehouseId);
+            entity.HasIndex(o => o.CreatedAtUtc);
+            entity.HasIndex(o => new { o.Status, o.CreatedAtUtc });
 
             // Relationships
-            entity.HasOne(o => o.Product)
-                  .WithMany()
-                  .HasForeignKey(o => o.ProductId)
-                  .OnDelete(DeleteBehavior.Restrict);
-
             entity.HasOne(o => o.Customer)
                   .WithMany()
                   .HasForeignKey(o => o.CustomerId)
                   .OnDelete(DeleteBehavior.Restrict);
-        });
 
-        // DeliveryOrder (Đơn giao hàng) Configuration
-        modelBuilder.Entity<DeliveryOrder>(entity =>
-        {
-            entity.ToTable("delivery_orders");
-            entity.HasKey(d => d.Id);
-            entity.Property(d => d.GhtkId).HasMaxLength(100);
-            entity.Property(d => d.Status).HasConversion<string>().HasMaxLength(50).IsRequired();
-            entity.Property(d => d.TotalAmount).HasPrecision(18, 2).IsRequired();
-            entity.Property(d => d.ShippingFee).HasPrecision(18, 2).IsRequired();
-            entity.Property(d => d.Weight).HasPrecision(10, 2).IsRequired();
-            entity.Property(d => d.Note).HasMaxLength(500);
-            entity.Property(d => d.EstimatedPickTime).HasMaxLength(100);
-            entity.Property(d => d.EstimatedDeliverTime).HasMaxLength(100);
-            entity.Property(d => d.CreatedAtUtc).HasDefaultValueSql("timezone('utc', now())");
-
-            // Indexes quan trọng:
-            // 1. GhtkId: Tra cứu nhanh khi GHTK webhook gọi về hoặc khi nhân viên tìm theo mã GHTK
-            entity.HasIndex(d => d.GhtkId);
-
-            // 2. Status: Lọc danh sách đơn hàng theo trạng thái (Đang giao, Đã giao, Huỷ...)
-            entity.HasIndex(d => d.Status);
-
-            // 3. CreatedAtUtc: Sắp xếp và lọc đơn theo khoảng thời gian
-            entity.HasIndex(d => d.CreatedAtUtc);
-
-            // 4. (Status, CreatedAtUtc): Composite index tối ưu truy vấn lọc trạng thái kết hợp sắp xếp/phân trang theo thời gian
-            entity.HasIndex(d => new { d.Status, d.CreatedAtUtc });
-
-            // 5. OrderId: Tra cứu đơn giao hàng theo đơn chốt
-            entity.HasIndex(d => d.OrderId);
-
-            // 6. WarehouseId: Tra cứu đơn giao hàng theo kho xuất hàng
-            entity.HasIndex(d => d.WarehouseId);
-
-            // Relationships
-            entity.HasOne(d => d.Order)
+            entity.HasOne(o => o.Warehouse)
                   .WithMany()
-                  .HasForeignKey(d => d.OrderId)
+                  .HasForeignKey(o => o.WarehouseId)
                   .OnDelete(DeleteBehavior.SetNull);
 
-            entity.HasOne(d => d.Warehouse)
-                  .WithMany()
-                  .HasForeignKey(d => d.WarehouseId)
-                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasMany(o => o.Items)
+                  .WithOne(i => i.Order)
+                  .HasForeignKey(i => i.OrderId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(o => o.StatusHistories)
+                  .WithOne(h => h.Order)
+                  .HasForeignKey(h => h.OrderId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // DeliveryOrderStatusHistory (Lịch sử trạng thái đơn hàng) Configuration
-        modelBuilder.Entity<DeliveryOrderStatusHistory>(entity =>
+        // OrderItem (Chi tiết sản phẩm đơn hàng) Configuration
+        modelBuilder.Entity<OrderItem>(entity =>
         {
-            entity.ToTable("delivery_order_status_histories");
+            entity.ToTable("order_items");
+            entity.HasKey(i => i.Id);
+            entity.Property(i => i.Quantity).IsRequired();
+            entity.Property(i => i.UnitPrice).HasPrecision(18, 2).IsRequired();
+            entity.Property(i => i.TotalPrice).HasPrecision(18, 2).IsRequired();
+
+            entity.HasIndex(i => i.OrderId);
+            entity.HasIndex(i => i.ProductId);
+
+            // Relationship with Product
+            entity.HasOne(i => i.Product)
+                  .WithMany()
+                  .HasForeignKey(i => i.ProductId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // OrderStatusHistory (Lịch sử trạng thái đơn hàng) Configuration
+        modelBuilder.Entity<OrderStatusHistory>(entity =>
+        {
+            entity.ToTable("order_status_histories");
             entity.HasKey(h => h.Id);
             entity.Property(h => h.Status).HasConversion<string>().HasMaxLength(50).IsRequired();
             entity.Property(h => h.Note).HasMaxLength(500);
             entity.Property(h => h.CreatedAtUtc).HasDefaultValueSql("timezone('utc', now())");
 
-            // Indexes quan trọng:
-            // 1. (DeliveryOrderId, CreatedAtUtc): Lấy timeline lịch sử của 1 đơn giao hàng theo thứ tự thời gian cực nhanh
-            entity.HasIndex(h => new { h.DeliveryOrderId, h.CreatedAtUtc });
-
-            // 2. Status: Thống kê và tra cứu lịch sử thay đổi theo trạng thái
+            entity.HasIndex(h => new { h.OrderId, h.CreatedAtUtc });
             entity.HasIndex(h => h.Status);
-
-            // Relationship with DeliveryOrder
-            entity.HasOne(h => h.DeliveryOrder)
-                  .WithMany(d => d.StatusHistories)
-                  .HasForeignKey(h => h.DeliveryOrderId)
-                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Warehouse (Kho hàng) Configuration

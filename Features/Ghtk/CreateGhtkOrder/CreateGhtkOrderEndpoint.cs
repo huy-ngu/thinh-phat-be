@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using ThinhPhat.Api.Data;
 using ThinhPhat.Api.Data.Entities;
+using ThinhPhat.Api.Features.Orders.CreateOrder;
 using ThinhPhat.Api.Shared.Filters;
 using ThinhPhat.Api.Shared.Services.Ghtk;
 
@@ -63,7 +64,7 @@ public static class CreateGhtkOrderEndpoint
     {
         group.MapPost("/shipment/order", HandleAsync)
             .WithName("CreateGhtkOrder")
-            .WithSummary("Creates a shipping order directly on GHTK (Admin only)")
+            .WithSummary("Creates a shipping order directly on GHTK and syncs to Order (Admin only)")
             .RequireAuthorization("AdminOnly")
             .WithRequestValidation<GhtkCreateOrderRequest>()
             .Produces<GhtkCreateOrderResponse>(StatusCodes.Status200OK)
@@ -89,52 +90,52 @@ public static class CreateGhtkOrderEndpoint
             return TypedResults.BadRequest(ghtkResponse);
         }
 
-        // 2. Đồng bộ kết quả GHTK vào DeliveryOrder dựa trên partner_id / order.id
+        // 2. Đồng bộ kết quả GHTK vào Order dựa trên partner_id / order.id
         var partnerId = ghtkResponse.Order?.PartnerId ?? request.Order.Id;
-        if (Guid.TryParse(partnerId, out var deliveryOrderId))
+        if (Guid.TryParse(partnerId, out var orderId))
         {
-            var deliveryOrder = await db.DeliveryOrders
-                .FirstOrDefaultAsync(d => d.Id == deliveryOrderId, cancellationToken);
+            var order = await db.Orders
+                .FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
 
-            if (deliveryOrder is not null)
+            if (order is not null)
             {
                 // Gán GHTK Label (Mã vận đơn)
                 if (!string.IsNullOrWhiteSpace(ghtkResponse.Order?.Label))
                 {
-                    deliveryOrder.GhtkId = ghtkResponse.Order.Label;
+                    order.GhtkId = ghtkResponse.Order.Label;
                 }
 
                 // Gán Phí vận chuyển (Fee)
                 if (ghtkResponse.Order?.Fee.HasValue == true)
                 {
-                    deliveryOrder.ShippingFee = ghtkResponse.Order.Fee.Value;
+                    order.ShippingFee = ghtkResponse.Order.Fee.Value;
                 }
 
                 // Gán Trạng thái theo status_id từ GHTK nếu hợp lệ
-                if (ghtkResponse.Order?.StatusId.HasValue == true && Enum.IsDefined(typeof(DeliveryOrderStatus), ghtkResponse.Order.StatusId.Value))
+                if (ghtkResponse.Order?.StatusId.HasValue == true && Enum.IsDefined(typeof(OrderStatus), ghtkResponse.Order.StatusId.Value))
                 {
-                    deliveryOrder.Status = (DeliveryOrderStatus)ghtkResponse.Order.StatusId.Value;
+                    order.Status = (OrderStatus)ghtkResponse.Order.StatusId.Value;
                 }
                 else
                 {
-                    deliveryOrder.Status = DeliveryOrderStatus.Pending; // 1: Chưa tiếp nhận
+                    order.Status = OrderStatus.Confirmed; // 1: Đã chốt / Chưa tiếp nhận
                 }
 
                 // Gán thời gian lấy hàng và giao hàng dự kiến
-                deliveryOrder.EstimatedPickTime = ghtkResponse.Order?.EstimatedPickTime;
-                deliveryOrder.EstimatedDeliverTime = ghtkResponse.Order?.EstimatedDeliverTime;
-                deliveryOrder.UpdatedAtUtc = DateTime.UtcNow;
+                order.EstimatedPickTime = ghtkResponse.Order?.EstimatedPickTime;
+                order.EstimatedDeliverTime = ghtkResponse.Order?.EstimatedDeliverTime;
+                order.UpdatedAtUtc = DateTime.UtcNow;
 
-                var history = new DeliveryOrderStatusHistory
+                var history = new OrderStatusHistory
                 {
                     Id = Guid.NewGuid(),
-                    DeliveryOrderId = deliveryOrder.Id,
-                    Status = deliveryOrder.Status,
-                    Note = $"Tạo đơn GHTK thành công. Mã vận đơn: {ghtkResponse.Order?.Label}, Phí: {deliveryOrder.ShippingFee:N0}đ, Lấy hàng: {deliveryOrder.EstimatedPickTime ?? "N/A"}, Giao hàng: {deliveryOrder.EstimatedDeliverTime ?? "N/A"}",
+                    OrderId = order.Id,
+                    Status = order.Status,
+                    Note = $"Tạo đơn GHTK thành công. Mã vận đơn: {ghtkResponse.Order?.Label}, Phí: {order.ShippingFee:N0}đ, Lấy hàng: {order.EstimatedPickTime ?? "N/A"}, Giao hàng: {order.EstimatedDeliverTime ?? "N/A"}",
                     CreatedAtUtc = DateTime.UtcNow
                 };
 
-                await db.DeliveryOrderStatusHistories.AddAsync(history, cancellationToken);
+                await db.OrderStatusHistories.AddAsync(history, cancellationToken);
                 await db.SaveChangesAsync(cancellationToken);
             }
         }

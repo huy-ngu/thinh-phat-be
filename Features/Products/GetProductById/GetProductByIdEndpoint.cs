@@ -32,6 +32,7 @@ public static class GetProductByIdEndpoint
                 p.Id,
                 p.Name,
                 p.Price,
+                p.CostPrice,
                 p.ImageUrl,
                 p.CreatedAtUtc,
                 p.UpdatedAtUtc

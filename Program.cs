@@ -13,7 +13,6 @@ using Microsoft.OpenApi;
 using ThinhPhat.Api.Data;
 using ThinhPhat.Api.Features.Auth;
 using ThinhPhat.Api.Features.Customers;
-using ThinhPhat.Api.Features.DeliveryOrders;
 using ThinhPhat.Api.Features.Ghtk;
 using ThinhPhat.Api.Features.Orders;
 using ThinhPhat.Api.Features.Products;
@@ -240,7 +239,6 @@ app.MapCustomerEndpoints();
 app.MapProductEndpoints();
 app.MapOrderEndpoints();
 app.MapWarehouseEndpoints();
-app.MapDeliveryOrderEndpoints();
 app.MapGhtkEndpoints();
 
 app.Run();
