@@ -8,7 +8,9 @@ public sealed record GhtkProductItem(
     [property: JsonPropertyName("weight")] double Weight,
     [property: JsonPropertyName("quantity")] int Quantity,
     [property: JsonPropertyName("price")] decimal Price,
-    [property: JsonPropertyName("product_code")] string? ProductCode = null
+    [property: JsonPropertyName("product_code")]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? ProductCode = null
 );
 
 public sealed record GhtkOrderInfo(
@@ -16,21 +18,25 @@ public sealed record GhtkOrderInfo(
     [property: JsonPropertyName("pick_name")] string PickName,
     [property: JsonPropertyName("pick_address")] string PickAddress,
     [property: JsonPropertyName("pick_province")] string PickProvince,
+    [property: JsonPropertyName("pick_district")] string PickDistrict,
+    [property: JsonPropertyName("pick_ward")] string? PickWard,
     [property: JsonPropertyName("pick_tel")] string PickTel,
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("address")] string Address,
     [property: JsonPropertyName("province")] string Province,
+    [property: JsonPropertyName("district")] string District,
+    [property: JsonPropertyName("ward")] string? Ward,
+    [property: JsonPropertyName("street")] string? Street,
+    [property: JsonPropertyName("hamlet")] string? Hamlet,
     [property: JsonPropertyName("tel")] string Tel,
-    [property: JsonPropertyName("pick_money")] decimal PickMoney,
+    [property: JsonPropertyName("is_freeship")] int? IsFreeship,
+    [property: JsonPropertyName("pick_date")] string? PickDate,
+    [property: JsonPropertyName("transport")] string? Transport,
+    [property: JsonPropertyName("pick_option")] string? PickOption,
+    [property: JsonPropertyName("note")] string? Note,
     [property: JsonPropertyName("value")] decimal Value,
-    [property: JsonPropertyName("pick_district")] string? PickDistrict = null,
-    [property: JsonPropertyName("pick_ward")] string? PickWard = null,
-    [property: JsonPropertyName("pick_street")] string? PickStreet = null,
-    [property: JsonPropertyName("district")] string? District = null,
-    [property: JsonPropertyName("ward")] string? Ward = null,
-    [property: JsonPropertyName("street")] string? Street = null,
-    [property: JsonPropertyName("note")] string? Note = null,
-    [property: JsonPropertyName("is_freeship")] int? IsFreeship = null
+    [property: JsonPropertyName("pick_money")] decimal PickMoney,
+    [property: JsonPropertyName("pick_street")] string? PickStreet = null
 );
 
 public sealed record GhtkCreateOrderRequest(

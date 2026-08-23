@@ -27,7 +27,7 @@ public sealed record UpdateOrderRequest(
     decimal? TotalAmount = null,
     decimal? ShippingFee = null,
     decimal? Weight = null,
-    OrderStatus Status = OrderStatus.Draft,
+    OrderStatus Status = OrderStatus.New,
     string? Note = null,
     List<UpdateOrderItemRequest>? Items = null
 );

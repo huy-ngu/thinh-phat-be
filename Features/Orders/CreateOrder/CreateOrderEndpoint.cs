@@ -26,7 +26,7 @@ public sealed record CreateOrderRequest(
     decimal? TotalAmount = null,
     decimal? ShippingFee = null,
     decimal? Weight = null,
-    OrderStatus Status = OrderStatus.Draft,
+    OrderStatus Status = OrderStatus.New,
     string? Note = null,
     List<CreateOrderItemRequest>? Items = null
 );
@@ -317,7 +317,7 @@ public static class CreateOrderEndpoint
 
     public static string GetStatusDisplayName(OrderStatus status) => status switch
     {
-        OrderStatus.Draft => "Nháp",
+        OrderStatus.Done => "Đã chốt thành công",
         OrderStatus.New => "Mới tạo",
         OrderStatus.NoAnswer => "Không nghe máy",
         OrderStatus.CallbackLater => "Hẹn gọi lại",

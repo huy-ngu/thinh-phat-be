@@ -643,46 +643,23 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
 
 ---
 
-### 4.6 GHTK Integration (`/api/v1/ghtk`)
-
-#### 🔹 [POST] `/api/v1/ghtk/shipment/order`
-- **Mô tả:** Đẩy đơn hàng sang Giao Hàng Tiết Kiệm (GHTK API). Tự động cập nhật mã vận đơn `ghtkId`, phí ship `shippingFee`, trạng thái và thời gian lấy/giao hàng dự kiến trực tiếp vào bảng `Orders`.
+#### 🔹 [POST] `/api/v1/ghtk/shipment/order` hoặc `/api/v1/ghtk/shipment/order/{orderId}`
+- **Mô tả:** Đẩy đơn hàng đã chốt sang Giao Hàng Tiết Kiệm (GHTK API).
+  * **Điều kiện:** Chỉ đơn hàng có trạng thái **`Done` (`0`: Đã chốt thành công)** mới được phép đẩy.
+  * **Tự động hóa:** Backend tự động lấy toàn bộ thông tin kho xuất hàng (`pick_...`), thông tin người nhận, danh sách sản phẩm, tự động thiết lập các trường mặc định (`is_freeship = 1`, `transport = "road"`, `pick_option = "cod"`, `hamlet = "Khác"`, `pick_date = Ngày hiện tại`), sau đó gọi GHTK API và cập nhật mã vận đơn `ghtkId`, `shippingFee`, `status = 1 (Confirmed)`.
 - **Quyền hạn:** 👑 **Admin Only**
 - **Headers:** 
   - `Authorization: Bearer <AdminAccessToken>`
   - `Content-Type: application/json`
-- **Payload:**
+- **Cách 1: Gửi Body JSON (`POST /api/v1/ghtk/shipment/order`):**
   ```json
   {
-    "products": [
-      {
-        "name": "Sản phẩm A",
-        "weight": 0.5,
-        "quantity": 2,
-        "price": 250000.0,
-        "product_code": "SP001"
-      }
-    ],
-    "order": {
-      "id": "11111111-2222-3333-4444-555555555555",
-      "pick_name": "Kho Tổng TP.HCM",
-      "pick_address": "Số 10 Quốc Lộ 1A",
-      "pick_province": "TP. Hồ Chí Minh",
-      "pick_district": "Quận Bình Tân",
-      "pick_tel": "02838123456",
-      "name": "Nguyễn Văn Khách",
-      "address": "Số 123 Đường Lê Lợi",
-      "province": "TP. Hồ Chí Minh",
-      "district": "Quận 1",
-      "tel": "0912345678",
-      "pick_money": 522000.0,
-      "value": 500000.0,
-      "note": "Cho khách xem hàng",
-      "is_freeship": 1
-    }
+    "orderId": "11111111-2222-3333-4444-555555555555",
+    "note": "Cho khách xem hàng, gọi điện trước khi giao hàng"
   }
   ```
-  *(Ghi chú: `order.id` truyền trực tiếp `id` của `Order` để backend tự động mapping và cập nhật).*
+- **Cách 2: Gửi Path Param (`POST /api/v1/ghtk/shipment/order/11111111-2222-3333-4444-555555555555`):**
+  *(Không cần body, hoặc truyền thêm query param `?note=...` nếu muốn ghi chú riêng)*.
 - **Response (200 OK):**
   ```json
   {
@@ -700,6 +677,9 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
     }
   }
   ```
+- **Lỗi thường gặp:**
+  - `400 Bad Request`: Đơn hàng chưa ở trạng thái `Done (0)`, hoặc thiếu kho hàng / địa chỉ.
+  - `404 Not Found`: Đơn hàng không tồn tại.
 
 ---
 

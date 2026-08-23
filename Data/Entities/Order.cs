@@ -15,7 +15,7 @@ public sealed class Order
     public string Address { get; set; } = string.Empty;
 
     public decimal TotalAmount { get; set; }
-    public OrderStatus Status { get; set; } = OrderStatus.Draft;
+    public OrderStatus Status { get; set; } = OrderStatus.New;
     public string? Note { get; set; }
 
     // ==========================================
