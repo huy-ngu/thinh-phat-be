@@ -5,7 +5,7 @@ public enum OrderStatus
     // ==========================================
     // 1. TRẠNG THÁI TELESALE (Số Âm & 0)
     // ==========================================
-    Draft = 0,                                // Đơn nháp / Lead mới từ Landing page / Khách đặt
+    Done = 0,                                 // Đã chốt thành công
     New = -1,                                 // Mới tạo - Chờ nhân viên gọi điện
     NoAnswer = -2,                            // Không nghe máy
     CallbackLater = -3,                       // Hẹn gọi lại sau

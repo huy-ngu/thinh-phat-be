@@ -18,11 +18,14 @@ public sealed record CreateOrderItemRequest(
 
 public sealed record CreateOrderRequest(
     Guid CustomerId,
+    string Province,
+    string District,
+    string? Ward,
     string Address,
     Guid? WarehouseId = null,
     decimal? TotalAmount = null,
-    decimal ShippingFee = 0m,
-    decimal Weight = 0m,
+    decimal? ShippingFee = null,
+    decimal? Weight = null,
     OrderStatus Status = OrderStatus.Draft,
     string? Note = null,
     List<CreateOrderItemRequest>? Items = null
@@ -54,10 +57,13 @@ public sealed record OrderDto(
     string CustomerPhone,
     Guid? WarehouseId,
     string? WarehouseName,
+    string Province,
+    string District,
+    string? Ward,
     string Address,
     decimal TotalAmount,
-    decimal ShippingFee,
-    decimal Weight,
+    decimal? ShippingFee,
+    decimal? Weight,
     OrderStatus Status,
     string StatusName,
     string? Note,
@@ -78,6 +84,17 @@ public sealed class CreateOrderValidator : AbstractValidator<CreateOrderRequest>
         RuleFor(x => x.CustomerId)
             .NotEmpty().WithMessage("CustomerId is required.");
 
+        RuleFor(x => x.Province)
+            .NotEmpty().WithMessage("Province is required.")
+            .MaximumLength(100).WithMessage("Province must not exceed 100 characters.");
+
+        RuleFor(x => x.District)
+            .NotEmpty().WithMessage("District is required.")
+            .MaximumLength(100).WithMessage("District must not exceed 100 characters.");
+
+        RuleFor(x => x.Ward)
+            .MaximumLength(100).WithMessage("Ward must not exceed 100 characters.");
+
         RuleFor(x => x.Address)
             .NotEmpty().WithMessage("Delivery address is required.")
             .MaximumLength(300).WithMessage("Address must not exceed 300 characters.");
@@ -86,10 +103,10 @@ public sealed class CreateOrderValidator : AbstractValidator<CreateOrderRequest>
             .GreaterThanOrEqualTo(0).When(x => x.TotalAmount.HasValue).WithMessage("Total amount must be greater than or equal to 0.");
 
         RuleFor(x => x.ShippingFee)
-            .GreaterThanOrEqualTo(0).WithMessage("Shipping fee must be greater than or equal to 0.");
+            .GreaterThanOrEqualTo(0).When(x => x.ShippingFee.HasValue).WithMessage("Shipping fee must be greater than or equal to 0.");
 
         RuleFor(x => x.Weight)
-            .GreaterThanOrEqualTo(0).WithMessage("Weight must be greater than or equal to 0.");
+            .GreaterThanOrEqualTo(0).When(x => x.Weight.HasValue).WithMessage("Weight must be greater than or equal to 0.");
 
         RuleFor(x => x.Status)
             .IsInEnum().WithMessage("Invalid order status.");
@@ -222,7 +239,7 @@ public static class CreateOrderEndpoint
             }
         }
 
-        var finalTotalAmount = request.TotalAmount ?? (calculatedItemsTotal + request.ShippingFee);
+        var finalTotalAmount = request.TotalAmount ?? (calculatedItemsTotal + (request.ShippingFee ?? 0m));
 
         // 4. Khởi tạo Order
         var order = new Order
@@ -230,6 +247,9 @@ public static class CreateOrderEndpoint
             Id = orderId,
             CustomerId = request.CustomerId,
             WarehouseId = request.WarehouseId,
+            Province = request.Province.Trim(),
+            District = request.District.Trim(),
+            Ward = string.IsNullOrWhiteSpace(request.Ward) ? null : request.Ward.Trim(),
             Address = request.Address.Trim(),
             TotalAmount = finalTotalAmount,
             ShippingFee = request.ShippingFee,
@@ -273,6 +293,9 @@ public static class CreateOrderEndpoint
             CustomerPhone: customer.PhoneNumber,
             WarehouseId: order.WarehouseId,
             WarehouseName: warehouseName,
+            Province: order.Province,
+            District: order.District,
+            Ward: order.Ward,
             Address: order.Address,
             TotalAmount: order.TotalAmount,
             ShippingFee: order.ShippingFee,

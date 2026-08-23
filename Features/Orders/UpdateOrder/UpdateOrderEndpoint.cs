@@ -19,11 +19,14 @@ public sealed record UpdateOrderItemRequest(
 
 public sealed record UpdateOrderRequest(
     Guid CustomerId,
+    string Province,
+    string District,
+    string? Ward,
     string Address,
     Guid? WarehouseId = null,
     decimal? TotalAmount = null,
-    decimal ShippingFee = 0m,
-    decimal Weight = 0m,
+    decimal? ShippingFee = null,
+    decimal? Weight = null,
     OrderStatus Status = OrderStatus.Draft,
     string? Note = null,
     List<UpdateOrderItemRequest>? Items = null
@@ -37,6 +40,17 @@ public sealed class UpdateOrderValidator : AbstractValidator<UpdateOrderRequest>
         RuleFor(x => x.CustomerId)
             .NotEmpty().WithMessage("CustomerId is required.");
 
+        RuleFor(x => x.Province)
+            .NotEmpty().WithMessage("Province is required.")
+            .MaximumLength(100).WithMessage("Province must not exceed 100 characters.");
+
+        RuleFor(x => x.District)
+            .NotEmpty().WithMessage("District is required.")
+            .MaximumLength(100).WithMessage("District must not exceed 100 characters.");
+
+        RuleFor(x => x.Ward)
+            .MaximumLength(100).WithMessage("Ward must not exceed 100 characters.");
+
         RuleFor(x => x.Address)
             .NotEmpty().WithMessage("Delivery address is required.")
             .MaximumLength(300).WithMessage("Address must not exceed 300 characters.");
@@ -45,10 +59,10 @@ public sealed class UpdateOrderValidator : AbstractValidator<UpdateOrderRequest>
             .GreaterThanOrEqualTo(0).When(x => x.TotalAmount.HasValue).WithMessage("Total amount must be greater than or equal to 0.");
 
         RuleFor(x => x.ShippingFee)
-            .GreaterThanOrEqualTo(0).WithMessage("Shipping fee must be greater than or equal to 0.");
+            .GreaterThanOrEqualTo(0).When(x => x.ShippingFee.HasValue).WithMessage("Shipping fee must be greater than or equal to 0.");
 
         RuleFor(x => x.Weight)
-            .GreaterThanOrEqualTo(0).WithMessage("Weight must be greater than or equal to 0.");
+            .GreaterThanOrEqualTo(0).When(x => x.Weight.HasValue).WithMessage("Weight must be greater than or equal to 0.");
 
         RuleFor(x => x.Status)
             .IsInEnum().WithMessage("Invalid order status.");
@@ -211,11 +225,14 @@ public static class UpdateOrderEndpoint
             calculatedItemsTotal = order.Items.Sum(i => i.TotalPrice);
         }
 
-        var finalTotalAmount = request.TotalAmount ?? (calculatedItemsTotal + request.ShippingFee);
+        var finalTotalAmount = request.TotalAmount ?? (calculatedItemsTotal + (request.ShippingFee ?? 0m));
 
         // 5. Cập nhật các trường chính
         order.CustomerId = request.CustomerId;
         order.WarehouseId = request.WarehouseId;
+        order.Province = request.Province.Trim();
+        order.District = request.District.Trim();
+        order.Ward = string.IsNullOrWhiteSpace(request.Ward) ? null : request.Ward.Trim();
         order.Address = request.Address.Trim();
         order.TotalAmount = finalTotalAmount;
         order.ShippingFee = request.ShippingFee;
@@ -242,6 +259,9 @@ public static class UpdateOrderEndpoint
             CustomerPhone: refreshedOrder.Customer?.PhoneNumber ?? string.Empty,
             WarehouseId: refreshedOrder.WarehouseId,
             WarehouseName: refreshedOrder.Warehouse?.Name ?? warehouseName,
+            Province: refreshedOrder.Province,
+            District: refreshedOrder.District,
+            Ward: refreshedOrder.Ward,
             Address: refreshedOrder.Address,
             TotalAmount: refreshedOrder.TotalAmount,
             ShippingFee: refreshedOrder.ShippingFee,

@@ -100,6 +100,9 @@ public static class GetOrdersEndpoint
             var keyword = search.Trim().ToLower();
             query = query.Where(o =>
                 o.Address.ToLower().Contains(keyword) ||
+                o.Province.ToLower().Contains(keyword) ||
+                o.District.ToLower().Contains(keyword) ||
+                (o.Ward != null && o.Ward.ToLower().Contains(keyword)) ||
                 (o.Note != null && o.Note.ToLower().Contains(keyword)) ||
                 (o.GhtkId != null && o.GhtkId.ToLower().Contains(keyword)) ||
                 (o.Customer != null && (o.Customer.Name.ToLower().Contains(keyword) || o.Customer.PhoneNumber.Contains(keyword))) ||
@@ -121,6 +124,9 @@ public static class GetOrdersEndpoint
             CustomerPhone: o.Customer?.PhoneNumber ?? string.Empty,
             WarehouseId: o.WarehouseId,
             WarehouseName: o.Warehouse?.Name,
+            Province: o.Province,
+            District: o.District,
+            Ward: o.Ward,
             Address: o.Address,
             TotalAmount: o.TotalAmount,
             ShippingFee: o.ShippingFee,

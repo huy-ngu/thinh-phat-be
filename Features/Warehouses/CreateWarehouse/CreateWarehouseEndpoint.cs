@@ -12,6 +12,9 @@ namespace ThinhPhat.Api.Features.Warehouses.CreateWarehouse;
 // 1. DTOs
 public sealed record CreateWarehouseRequest(
     string Name,
+    string Province,
+    string District,
+    string? Ward,
     string Address,
     string PhoneNumber
 );
@@ -19,6 +22,9 @@ public sealed record CreateWarehouseRequest(
 public sealed record WarehouseDto(
     Guid Id,
     string Name,
+    string Province,
+    string District,
+    string? Ward,
     string Address,
     string PhoneNumber,
     DateTime CreatedAtUtc,
@@ -33,6 +39,17 @@ public sealed class CreateWarehouseValidator : AbstractValidator<CreateWarehouse
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Warehouse name is required.")
             .MaximumLength(200).WithMessage("Warehouse name must not exceed 200 characters.");
+
+        RuleFor(x => x.Province)
+            .NotEmpty().WithMessage("Province is required.")
+            .MaximumLength(100).WithMessage("Province must not exceed 100 characters.");
+
+        RuleFor(x => x.District)
+            .NotEmpty().WithMessage("District is required.")
+            .MaximumLength(100).WithMessage("District must not exceed 100 characters.");
+
+        RuleFor(x => x.Ward)
+            .MaximumLength(100).WithMessage("Ward must not exceed 100 characters.");
 
         RuleFor(x => x.Address)
             .NotEmpty().WithMessage("Address is required.")
@@ -89,6 +106,9 @@ public static class CreateWarehouseEndpoint
         {
             Id = Guid.NewGuid(),
             Name = trimmedName,
+            Province = request.Province.Trim(),
+            District = request.District.Trim(),
+            Ward = string.IsNullOrWhiteSpace(request.Ward) ? null : request.Ward.Trim(),
             Address = request.Address.Trim(),
             PhoneNumber = normalizedPhone,
             CreatedAtUtc = DateTime.UtcNow
@@ -100,6 +120,9 @@ public static class CreateWarehouseEndpoint
         var response = new WarehouseDto(
             Id: warehouse.Id,
             Name: warehouse.Name,
+            Province: warehouse.Province,
+            District: warehouse.District,
+            Ward: warehouse.Ward,
             Address: warehouse.Address,
             PhoneNumber: warehouse.PhoneNumber,
             CreatedAtUtc: warehouse.CreatedAtUtc,

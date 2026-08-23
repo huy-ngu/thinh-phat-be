@@ -199,6 +199,18 @@ export interface OrderStatusHistoryDto {
   createdAtUtc: string;
 }
 
+export interface WarehouseDto {
+  id: string;
+  name: string;
+  province: string;
+  district: string;
+  ward: string | null;
+  address: string;
+  phoneNumber: string;
+  createdAtUtc: string;
+  updatedAtUtc: string | null;
+}
+
 export interface OrderDto {
   id: string;
   customerId: string;
@@ -206,10 +218,13 @@ export interface OrderDto {
   customerPhone: string;
   warehouseId: string | null;
   warehouseName: string | null;
+  province: string;
+  district: string;
+  ward: string | null;
   address: string;
   totalAmount: number;
-  shippingFee: number;
-  weight: number;
+  shippingFee: number | null;
+  weight: number | null;
   status: OrderStatus;
   statusName: string;
   note: string | null;
@@ -416,7 +431,7 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
   - `warehouseId` *(Guid, optional)*: Lọc theo kho xuất hàng.
   - `productId` *(Guid, optional)*: Lọc theo sản phẩm có trong đơn.
   - `ghtkId` *(string, optional)*: Lọc theo mã vận đơn GHTK.
-  - `search` *(string, optional)*: Tìm kiếm theo Địa chỉ, Tên khách hàng, Số điện thoại, Mã GHTK, hoặc Tên sản phẩm.
+  - `search` *(string, optional)*: Tìm kiếm theo Địa chỉ, Tỉnh/Thành, Quận/Huyện, Phường/Xã, Tên khách hàng, SĐT, Mã GHTK, hoặc Tên sản phẩm.
   - `fromDate` *(ISO Date string, optional)*: Từ ngày.
   - `toDate` *(ISO Date string, optional)*: Đến ngày.
   - `page` *(number, optional, default: 1)*
@@ -432,7 +447,10 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
         "customerPhone": "0912345678",
         "warehouseId": "8a7b6c5d-4e3f-2a1b-0c9d-8e7f6a5b4c3d",
         "warehouseName": "Kho Tổng TP.HCM",
-        "address": "Số 123 Đường Lê Lợi, Phường Bến Nghé, Quận 1, TP.HCM",
+        "province": "TP. Hồ Chí Minh",
+        "district": "Quận 1",
+        "ward": "Phường Bến Nghé",
+        "address": "Số 123 Đường Lê Lợi",
         "totalAmount": 522000.0,
         "shippingFee": 22000.0,
         "weight": 0.5,
@@ -483,7 +501,7 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
 ---
 
 #### 🔹 [POST] `/api/v1/orders`
-- **Mô tả:** Tạo đơn hàng mới (hỗ trợ thêm danh sách nhiều sản phẩm `items`, cân nặng, phí ship, kho hàng).
+- **Mô tả:** Tạo đơn hàng mới (hỗ trợ 4 cấp địa chỉ, danh sách nhiều sản phẩm `items`, cân nặng, phí ship, kho hàng).
 - **Quyền hạn:** 👑 **Admin Only**
 - **Headers:** 
   - `Authorization: Bearer <AdminAccessToken>`
@@ -493,7 +511,10 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
   {
     "customerId": "c1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c",
     "warehouseId": "8a7b6c5d-4e3f-2a1b-0c9d-8e7f6a5b4c3d",
-    "address": "Số 123 Đường Lê Lợi, Phường Bến Nghé, Quận 1, TP.HCM",
+    "province": "TP. Hồ Chí Minh",
+    "district": "Quận 1",
+    "ward": "Phường Bến Nghé",
+    "address": "Số 123 Đường Lê Lợi",
     "shippingFee": 22000.0,
     "weight": 0.5,
     "status": 1,
@@ -507,13 +528,13 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
     ]
   }
   ```
-  *(Ghi chú: Nếu không truyền `totalAmount`, backend sẽ tự tính = Tổng tiền sản phẩm + Phí ship)*.
+  *(Ghi chú: `shippingFee` và `weight` là tùy chọn (nullable), có thể để trống khi đơn mới tạo từ Landing page / Lead nháp; nếu không truyền `totalAmount`, backend sẽ tự tính = Tổng tiền sản phẩm + (shippingFee ?? 0))*.
 - **Response (201 Created):** Đối tượng `OrderDto`.
 
 ---
 
 #### 🔹 [PUT] `/api/v1/orders/{id}`
-- **Mô tả:** Cập nhật toàn bộ thông tin đơn hàng, danh sách sản phẩm, kho hàng, phí ship và trạng thái.
+- **Mô tả:** Cập nhật toàn bộ thông tin đơn hàng, địa chỉ chuẩn hóa, danh sách sản phẩm, kho hàng, phí ship và trạng thái.
 - **Quyền hạn:** 👑 **Admin Only**
 - **Headers:** `Authorization: Bearer <AdminAccessToken>`
 - **Payload:** Cấu trúc tương tự `POST /api/v1/orders`.
@@ -548,7 +569,27 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
 #### 🔹 [GET] `/api/v1/warehouses`
 - **Mô tả:** Danh sách kho hàng.
 - **Quyền hạn:** `Bearer <Token>` (Authenticated)
-- **Response (200 OK):** `PaginatedResponse<WarehouseDto>`.
+- **Response (200 OK):**
+  ```json
+  {
+    "items": [
+      {
+        "id": "8a7b6c5d-4e3f-2a1b-0c9d-8e7f6a5b4c3d",
+        "name": "Kho Tổng TP.HCM",
+        "province": "TP. Hồ Chí Minh",
+        "district": "Quận Bình Tân",
+        "ward": "Phường An Lạc",
+        "address": "Số 10 Quốc Lộ 1A",
+        "phoneNumber": "02838123456",
+        "createdAtUtc": "2026-08-01T08:00:00Z",
+        "updatedAtUtc": null
+      }
+    ],
+    "totalCount": 1,
+    "page": 1,
+    "pageSize": 20
+  }
+  ```
 
 ---
 
@@ -566,7 +607,10 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
   ```json
   {
     "name": "Kho Tổng TP.HCM",
-    "address": "Số 10 Quốc Lộ 1A, Bình Tân, TP.HCM",
+    "province": "TP. Hồ Chí Minh",
+    "district": "Quận Bình Tân",
+    "ward": "Phường An Lạc",
+    "address": "Số 10 Quốc Lộ 1A",
     "phoneNumber": "02838123456"
   }
   ```
@@ -577,6 +621,17 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
 #### 🔹 [PUT] `/api/v1/warehouses/{id}`
 - **Mô tả:** Cập nhật thông tin kho hàng.
 - **Quyền hạn:** 👑 **Admin Only**
+- **Payload:**
+  ```json
+  {
+    "name": "Kho Tổng TP.HCM (Mới)",
+    "province": "TP. Hồ Chí Minh",
+    "district": "Quận Bình Tân",
+    "ward": "Phường An Lạc",
+    "address": "Số 20 Quốc Lộ 1A",
+    "phoneNumber": "02838123456"
+  }
+  ```
 - **Response (200 OK):** `WarehouseDto`.
 
 ---

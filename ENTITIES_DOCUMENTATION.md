@@ -92,10 +92,13 @@ erDiagram
         uuid id PK
         uuid customer_id FK
         uuid warehouse_id FK "Nullable"
+        string province "Max 100"
+        string district "Max 100"
+        string ward "Max 100, Nullable"
         string address "Max 300"
         decimal total_amount "18,2"
-        decimal shipping_fee "18,2"
-        decimal weight "10,2"
+        decimal shipping_fee "18,2, Nullable"
+        decimal weight "10,2, Nullable"
         string status "Max 50 (Enum string)"
         string ghtk_id "Max 100, Nullable"
         string estimated_pick_time "Max 100, Nullable"
@@ -125,6 +128,9 @@ erDiagram
     WAREHOUSES {
         uuid id PK
         string name "Max 200"
+        string province "Max 100"
+        string district "Max 100"
+        string ward "Max 100, Nullable"
         string address "Max 300"
         string phone_number "Max 20"
         timestamptz created_at_utc
@@ -198,10 +204,13 @@ Bảng quản lý tập trung toàn bộ vòng đời đơn hàng: từ lúc kh�
 | `id` | `uuid` | `PK`, `NOT NULL` | Mã định danh đơn hàng (Dùng làm `partner_id` gửi GHTK) |
 | `customer_id` | `uuid` | `FK (customers.id)`, `NOT NULL` | Khách hàng nhận đơn |
 | `warehouse_id` | `uuid` | `FK (warehouses.id)`, `NULL` | Kho xuất hàng (gán khi chốt đơn gửi GHTK) |
-| `address` | `varchar(300)`| `NOT NULL` | Địa chỉ nhận hàng chi tiết |
+| `province` | `varchar(100)`| `NOT NULL`, Default: `''` | Tỉnh / Thành phố người nhận |
+| `district` | `varchar(100)`| `NOT NULL`, Default: `''` | Quận / Huyện người nhận |
+| `ward` | `varchar(100)`| `NULL` | Phường / Xã người nhận |
+| `address` | `varchar(300)`| `NOT NULL` | Địa chỉ nhận hàng chi tiết (Số nhà, tên đường) |
 | `total_amount` | `numeric(18,2)`| `NOT NULL` | Tổng số tiền đơn hàng (Tiền hàng + Phí ship) |
-| `shipping_fee` | `numeric(18,2)`| `NOT NULL`, Default: `0` | Phí vận chuyển GHTK |
-| `weight` | `numeric(10,2)`| `NOT NULL`, Default: `0` | Khối lượng gói hàng (kg / gram) |
+| `shipping_fee` | `numeric(18,2)`| `NULL` | Phí vận chuyển GHTK (Gán khi chốt đơn / Đẩy GHTK) |
+| `weight` | `numeric(10,2)`| `NULL` | Khối lượng gói hàng (kg / gram) |
 | `status` | `varchar(50)` | `NOT NULL`, Index | Trạng thái vòng đời đơn hàng (`OrderStatus`) |
 | `ghtk_id` | `varchar(100)`| `NULL`, Index | Mã vận đơn GHTK (`label_id`) |
 | `estimated_pick_time`| `varchar(100)`| `NULL` | Thời gian GHTK dự kiến lấy hàng |
@@ -246,7 +255,10 @@ Lưu địa điểm lấy hàng gửi đơn GHTK.
 | :--- | :--- | :--- | :--- |
 | `id` | `uuid` | `PK`, `NOT NULL` | Định danh kho hàng |
 | `name` | `varchar(200)`| `NOT NULL`, Index | Tên kho hàng |
-| `address` | `varchar(300)`| `NOT NULL` | Địa chỉ lấy hàng GHTK |
+| `province` | `varchar(100)`| `NOT NULL`, Default: `''` | Tỉnh / Thành phố kho hàng |
+| `district` | `varchar(100)`| `NOT NULL`, Default: `''` | Quận / Huyện kho hàng |
+| `ward` | `varchar(100)`| `NULL` | Phường / Xã kho hàng |
+| `address` | `varchar(300)`| `NOT NULL` | Địa chỉ lấy hàng GHTK (Số nhà, tên đường) |
 | `phone_number`| `varchar(20)` | `NOT NULL`, Index | SĐT liên hệ của kho |
 | `created_at_utc`| `timestamptz` | `NOT NULL`, Default: `UTC` | Thời gian tạo |
 | `updated_at_utc`| `timestamptz` | `NULL` | Thời gian cập nhật |
