@@ -176,6 +176,8 @@ export interface ProductDto {
   price: number;
   costPrice: number;
   imageUrl: string;
+  googleSheetUrl: string | null;
+  isDeleted: boolean;
   createdAtUtc: string;
   updatedAtUtc: string | null;
 }
@@ -413,6 +415,7 @@ export interface OrderDto {
   - `name` *(string, required)*: Tên sản phẩm.
   - `price` *(number, required)*: Giá bán lẻ (> 0).
   - `costPrice` *(number, optional/required)*: Giá nhập vốn (>= 0).
+  - `googleSheetUrl` *(string, optional)*: Link Webhook Google Apps Script để đồng bộ đơn hàng về sheet riêng của SP.
   - `image` *(File, required)*: File ảnh sản phẩm.
 - **Response (201 Created):** `ProductDto`.
 
@@ -426,6 +429,7 @@ export interface OrderDto {
   - `name` *(string, required)*: Tên sản phẩm.
   - `price` *(number, required)*: Giá bán lẻ (> 0).
   - `costPrice` *(number, required)*: Giá nhập vốn (>= 0).
+  - `googleSheetUrl` *(string, optional)*: Link Webhook Google Apps Script mới nếu cần thay đổi.
   - `image` *(File, optional)*: File ảnh mới (nếu muốn thay đổi ảnh).
 - **Response (200 OK):** `ProductDto`.
 

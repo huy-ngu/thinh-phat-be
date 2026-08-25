@@ -193,6 +193,7 @@ Lưu thông tin sản phẩm kinh doanh (hỗ trợ Soft Delete).
 | `cost_price` | `numeric(18,2)`| `NOT NULL`, Default: `0` | Giá nhập vốn của sản phẩm |
 | `image_url` | `varchar(500)`| `NOT NULL` | Đường dẫn ảnh CDN (Cloudinary) |
 | `image_public_id`| `varchar(200)`| `NULL` | Public ID quản lý ảnh trên Cloudinary |
+| `google_sheet_url`| `varchar(500)`| `NULL` | Link Webhook Google Apps Script để đồng bộ đơn hàng sang Google Sheet riêng của SP |
 | `is_deleted` | `boolean` | `NOT NULL`, Default: `false`, Index | Đánh dấu xóa mềm / Ngừng kinh doanh |
 | `deleted_at_utc`| `timestamptz` | `NULL` | Thời điểm xóa mềm |
 | `created_at_utc`| `timestamptz` | `NOT NULL`, Default: `UTC` | Thời gian tạo |
