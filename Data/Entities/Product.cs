@@ -8,7 +8,6 @@ public sealed class Product
     public decimal CostPrice { get; set; } // Giá nhập vốn
     public string ImageUrl { get; set; } = string.Empty;
     public string? ImagePublicId { get; set; }
-    public string? GoogleSheetUrl { get; set; }
     public bool IsDeleted { get; set; } = false;
     public DateTime? DeletedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;

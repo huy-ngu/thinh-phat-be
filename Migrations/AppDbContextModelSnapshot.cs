@@ -231,10 +231,6 @@ namespace ThinhPhat.Api.Migrations
                     b.Property<DateTime?>("DeletedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("GoogleSheetUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
                     b.Property<string>("ImagePublicId")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");

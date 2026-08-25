@@ -68,7 +68,6 @@ public static class GetProductsEndpoint
                 p.Price,
                 p.CostPrice,
                 p.ImageUrl,
-                p.GoogleSheetUrl,
                 p.IsDeleted,
                 p.CreatedAtUtc,
                 p.UpdatedAtUtc
