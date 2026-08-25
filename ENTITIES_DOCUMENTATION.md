@@ -84,6 +84,8 @@ erDiagram
         decimal cost_price "18,2"
         string image_url "Max 500"
         string image_public_id "Max 200"
+        boolean is_deleted "Default: false"
+        timestamptz deleted_at_utc "Nullable"
         timestamptz created_at_utc
         timestamptz updated_at_utc
     }
@@ -181,7 +183,7 @@ Lưu danh sách khách hàng đặt hàng.
 ---
 
 ### 2.4 Product (`products`)
-Lưu thông tin sản phẩm kinh doanh.
+Lưu thông tin sản phẩm kinh doanh (hỗ trợ Soft Delete).
 
 | Cột | Kiểu CSDL | Ràng buộc | Diễn giải |
 | :--- | :--- | :--- | :--- |
@@ -191,6 +193,8 @@ Lưu thông tin sản phẩm kinh doanh.
 | `cost_price` | `numeric(18,2)`| `NOT NULL`, Default: `0` | Giá nhập vốn của sản phẩm |
 | `image_url` | `varchar(500)`| `NOT NULL` | Đường dẫn ảnh CDN (Cloudinary) |
 | `image_public_id`| `varchar(200)`| `NULL` | Public ID quản lý ảnh trên Cloudinary |
+| `is_deleted` | `boolean` | `NOT NULL`, Default: `false`, Index | Đánh dấu xóa mềm / Ngừng kinh doanh |
+| `deleted_at_utc`| `timestamptz` | `NULL` | Thời điểm xóa mềm |
 | `created_at_utc`| `timestamptz` | `NOT NULL`, Default: `UTC` | Thời gian tạo |
 | `updated_at_utc`| `timestamptz` | `NULL` | Thời gian cập nhật |
 

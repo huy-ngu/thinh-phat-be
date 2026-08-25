@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
+using ThinhPhat.Api.Features.Ghtk.CancelGhtkOrder;
 using ThinhPhat.Api.Features.Ghtk.CreateGhtkOrder;
 using ThinhPhat.Api.Features.Ghtk.GhtkWebhook;
 
@@ -15,6 +16,7 @@ public static class GhtkEndpoints
 
         // 1. Authenticated API Endpoints
         group.MapCreateGhtkOrder();
+        group.MapCancelGhtkOrder();
 
         // 2. Webhook Endpoints (AllowAnonymous & DisableAntiforgery)
         group.MapGhtkWebhook();

@@ -90,6 +90,7 @@ public static class UpdateOrderStatusEndpoint
 
         var refreshedOrder = await db.Orders
             .AsNoTracking()
+            .IgnoreQueryFilters()
             .Include(o => o.Customer)
             .Include(o => o.Warehouse)
             .Include(o => o.Items)

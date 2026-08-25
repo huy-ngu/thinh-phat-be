@@ -56,6 +56,7 @@ public static class LoginEndpoint
 
     public static async Task<IResult> HandleAsync(
         LoginRequest request,
+        HttpContext httpContext,
         AppDbContext db,
         IPasswordHasher passwordHasher,
         IJwtProvider jwtProvider,
@@ -97,7 +98,15 @@ public static class LoginEndpoint
         await db.RefreshTokens.AddAsync(refreshToken, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 
-        // 4. Manual Response Mapping
+        // 4. Set HttpOnly Cookie (Chuẩn Production bảo mật chống XSS)
+        AuthCookieHelper.AppendRefreshTokenCookie(
+            httpContext.Response,
+            refreshTokenString,
+            refreshExpiresAt,
+            httpContext.Request.IsHttps
+        );
+
+        // 5. Response Mapping (Trả token trong body hỗ trợ cả Web và Mobile/API Clients)
         var response = new LoginResponse(
             AccessToken: accessToken,
             RefreshToken: refreshTokenString,

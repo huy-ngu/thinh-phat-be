@@ -22,6 +22,7 @@ using ThinhPhat.Api.Shared.Errors;
 using ThinhPhat.Api.Shared.Security;
 using ThinhPhat.Api.Shared.Services.Cloudinary;
 using ThinhPhat.Api.Shared.Services.Ghtk;
+using ThinhPhat.Api.Shared.Services.GoogleSheets;
 
 var builder = WebApplication.CreateBuilder(args);
 //test deploy
@@ -181,6 +182,13 @@ builder.Services.AddHttpClient<IGhtkService, GhtkService>((serviceProvider, clie
     client.BaseAddress = new Uri(baseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+
+// Register Google Sheet Sync Service (Timeout 5s, không chặn request đặt hàng)
+builder.Services.AddHttpClient(GoogleSheetService.HttpClientName, client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+builder.Services.AddSingleton<IGoogleSheetService, GoogleSheetService>();
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);

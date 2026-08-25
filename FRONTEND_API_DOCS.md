@@ -244,8 +244,16 @@ export interface OrderDto {
 
 ### 4.1 Authentication (`/api/v1/auth`)
 
+> [!TIP]
+> **Cơ Chế Bảo Mật Hybrid (Chuẩn OWASP Production):**
+> - **Refresh Token:** Được tự động lưu trong **`HttpOnly, Secure, SameSite=Lax` Cookie** (`Path=/api/v1/auth`). Trình duyệt tự động gửi kèm cookie khi gọi `/refresh` hoặc `/revoke`. Javascript không thể truy cập cookie này, ngăn chặn 100% rủi ro bị đánh cắp session qua tấn công XSS.
+> - **Access Token:** Trả về trong response body. Frontend lưu trong **RAM (Memory State)** (Pinia/Redux/Zustand), không lưu vào `localStorage`.
+> - **Cấu hình Frontend (Axios / Fetch):** Luôn bật **`withCredentials: true`** (hoặc `credentials: 'include'`).
+
+---
+
 #### 🔹 [POST] `/api/v1/auth/login`
-- **Mô tả:** Đăng nhập hệ thống (cho mọi User/Admin).
+- **Mô tả:** Đăng nhập hệ thống. Trình duyệt tự động nhận Cookie `refreshToken`.
 - **Quyền hạn:** Public
 - **Payload:**
   ```json
@@ -254,6 +262,7 @@ export interface OrderDto {
     "password": "Password123"
   }
   ```
+- **Response Headers:** `Set-Cookie: refreshToken=...; Path=/api/v1/auth; HttpOnly; SameSite=Lax`
 - **Response (200 OK):**
   ```json
   {
@@ -288,28 +297,35 @@ export interface OrderDto {
 ---
 
 #### 🔹 [POST] `/api/v1/auth/refresh`
-- **Mô tả:** Lấy Access Token mới bằng Refresh Token khi Access Token hết hạn (401).
+- **Mô tả:** Lấy Access Token mới khi Access Token hết hạn (401) hoặc khi người dùng F5 tải lại trang.
 - **Quyền hạn:** Public
-- **Payload:**
+- **Cơ chế:**
+  - **Web SPA:** Gửi request rỗng `{}` kèm `withCredentials: true` (Trình duyệt tự động gửi HttpOnly Cookie `refreshToken`).
+  - **Mobile App / Swagger:** Có thể truyền token trong body: `{ "refreshToken": "..." }`.
+- **Response Headers:** `Set-Cookie: refreshToken=<mới>; Path=/api/v1/auth; HttpOnly; SameSite=Lax`
+- **Response (200 OK):**
   ```json
   {
-    "refreshToken": "7f8b9c0d-1e2f-3a4b..."
+    "accessToken": "eyJhbGciOi...",
+    "refreshToken": "new-refresh-token...",
+    "expiresIn": 900,
+    "refreshTokenExpiresAtUtc": "2026-08-30T10:00:00Z"
   }
   ```
-- **Response (200 OK):** Trả về cặp Access Token và Refresh Token mới.
 
 ---
 
 #### 🔹 [POST] `/api/v1/auth/revoke`
-- **Mô tả:** Đăng xuất / Thu hồi Refresh Token.
+- **Mô tả:** Đăng xuất (Logout). Thu hồi Refresh Token trong CSDL và xóa HttpOnly Cookie khỏi trình duyệt.
 - **Quyền hạn:** Public
-- **Payload:**
+- **Payload (Optional):** `{}` (đọc từ Cookie) hoặc `{ "refreshToken": "..." }`.
+- **Response Headers:** `Set-Cookie: refreshToken=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/api/v1/auth`
+- **Response (200 OK):**
   ```json
   {
-    "refreshToken": "7f8b9c0d-1e2f-3a4b..."
+    "message": "Token revoked successfully and cookie cleared."
   }
   ```
-- **Response (200 OK):** `"Token revoked successfully."`
 
 ---
 
@@ -369,9 +385,13 @@ export interface OrderDto {
 ### 4.3 Products (`/api/v1/products`)
 
 #### 🔹 [GET] `/api/v1/products`
-- **Mô tả:** Danh sách sản phẩm (phân trang & tìm kiếm).
+- **Mô tả:** Danh sách sản phẩm (phân trang & tìm kiếm). Mặc định chỉ lấy các sản phẩm đang kinh doanh (`isDeleted = false`).
 - **Quyền hạn:** Public
-- **Query Params:** `search`, `page`, `pageSize`.
+- **Query Params:**
+  - `search` *(string, optional)*: Tìm kiếm theo tên sản phẩm.
+  - `includeDeleted` *(boolean, optional, default: false)*: `true` để lấy cả các sản phẩm đã xóa mềm / ngừng kinh doanh.
+  - `page` *(number, optional, default: 1)*
+  - `pageSize` *(number, optional, default: 20, max: 100)*
 - **Response (200 OK):** `PaginatedResponse<ProductDto>`.
 
 ---
@@ -379,6 +399,8 @@ export interface OrderDto {
 #### 🔹 [GET] `/api/v1/products/{id}`
 - **Mô tả:** Lấy thông tin chi tiết sản phẩm.
 - **Quyền hạn:** Public
+- **Query Params:**
+  - `includeDeleted` *(boolean, optional, default: false)*: `true` nếu muốn xem chi tiết sản phẩm đã xóa mềm.
 - **Response (200 OK):** `ProductDto`.
 
 ---
@@ -410,7 +432,7 @@ export interface OrderDto {
 ---
 
 #### 🔹 [DELETE] `/api/v1/products/{id}`
-- **Mô tả:** Xóa sản phẩm & tự động dọn ảnh trên Cloudinary.
+- **Mô tả:** Xóa mềm sản phẩm (Soft Delete: đánh dấu `isDeleted = true` và ngừng bán). Dữ liệu lịch sử trong các đơn hàng cũ và ảnh sản phẩm vẫn được bảo toàn nguyên vẹn.
 - **Quyền hạn:** 👑 **Admin Only**
 - **Response (204 No Content):** Không có body.
 
@@ -529,6 +551,33 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
   }
   ```
   *(Ghi chú: `shippingFee` và `weight` là tùy chọn (nullable), có thể để trống khi đơn mới tạo từ Landing page / Lead nháp; nếu không truyền `totalAmount`, backend sẽ tự tính = Tổng tiền sản phẩm + (shippingFee ?? 0))*.
+- **Response (201 Created):** Đối tượng `OrderDto`.
+
+---
+
+#### 🔹 [POST] `/api/v1/orders/with-customer`
+- **Mô tả:** Tạo khách hàng (tự động kiểm tra theo SĐT: nếu chưa có thì tạo mới, đã có thì liên kết khách hàng cũ) và tạo đơn hàng mới với trạng thái mặc định `-1` (`OrderStatus.New` - Mới tạo). Thích hợp cho form đặt hàng Landing Page, Telesale hoặc Website.
+- **Quyền hạn:** Public / Anonymous (Không bắt buộc JWT, hoặc có thể gửi kèm Bearer Token nếu có).
+- **Headers:** 
+  - `Content-Type: application/json`
+- **Payload:**
+  ```json
+  {
+    "customerName": "Nguyễn Văn A",
+    "phoneNumber": "0912345678",
+    "province": "Thành phố Hồ Chí Minh",
+    "district": "Quận 1",
+    "ward": "Phường Bến Nghé",
+    "address": "123 Đường Lê Lợi",
+    "items": [
+      {
+        "productId": "e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b",
+        "quantity": 2
+      }
+    ]
+  }
+  ```
+  *(Ghi chú: `totalAmount` tự động tính theo giá sản phẩm trong DB * số lượng; `weight` mặc định = 3; `shippingFee`, `note`, `warehouseId` để null).*
 - **Response (201 Created):** Đối tượng `OrderDto`.
 
 ---
@@ -680,6 +729,33 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
 - **Lỗi thường gặp:**
   - `400 Bad Request`: Đơn hàng chưa ở trạng thái `Done (0)`, hoặc thiếu kho hàng / địa chỉ.
   - `404 Not Found`: Đơn hàng không tồn tại.
+
+---
+
+#### 🔹 [POST] `/api/v1/ghtk/shipment/cancel/{ghtkId}`
+- **Mô tả:** Hủy đơn hàng đã gửi sang GHTK bằng **Mã vận đơn GHTK (`ghtkId` - chuỗi string, ví dụ: `S21234567.BO.MB1.123456789`)**. **Không cần truyền body payload**.
+  * **Điều kiện hiển thị trên Frontend:** Nút "Hủy đơn GHTK" **CHỈ hiển thị khi đơn hàng ở 1 trong 3 trạng thái**:
+    - `1` (`OrderStatus.Confirmed` - Đã chốt đơn / Chờ GHTK tiếp nhận)
+    - `2` (`OrderStatus.Accepted` - GHTK Đã tiếp nhận)
+    - `12` (`OrderStatus.Picking` - Đang lấy hàng)
+  * **Hành vi xử lý:** Nếu GHTK phản hồi hủy thành công (`success: true`), hệ thống tự động:
+    - Chuyển trạng thái đơn hàng sang **`-4` (`OrderStatus.Cancelled` - Hủy đơn hàng)**.
+    - Thêm một bản ghi mới vào lịch sử trạng thái **`OrderStatusHistory`** (ghi nhận thời gian và log_id từ GHTK).
+- **Quyền hạn:** 👑 **Admin Only**
+- **Headers:** 
+  - `Authorization: Bearer <AdminAccessToken>`
+- **Request Body:** Không cần body (`body: null / empty`).
+- **Response (200 OK):**
+  ```json
+  {
+    "success": true,
+    "message": "Hủy đơn hàng thành công",
+    "log_id": "99999999-aaaa-bbbb-cccc-dddddddddddd"
+  }
+  ```
+- **Lỗi thường gặp:**
+  - `400 Bad Request`: Đơn hàng không ở trạng thái 1, 2, hoặc 12, hoặc GHTK từ chối hủy (ví dụ đơn đã chuyển sang trạng thái đang giao 4).
+  - `404 Not Found`: Không tìm thấy đơn hàng nào có mã vận đơn GHTK này trong hệ thống.
 
 ---
 

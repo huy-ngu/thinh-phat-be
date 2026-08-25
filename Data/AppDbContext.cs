@@ -110,8 +110,16 @@ public sealed class AppDbContext : DbContext
             entity.Property(p => p.CostPrice).HasPrecision(18, 2).HasDefaultValue(0m);
             entity.Property(p => p.ImageUrl).HasMaxLength(500).IsRequired();
             entity.Property(p => p.ImagePublicId).HasMaxLength(200);
+            entity.Property(p => p.GoogleSheetUrl).HasMaxLength(500);
+            entity.Property(p => p.IsDeleted).HasDefaultValue(false).IsRequired();
+            entity.Property(p => p.DeletedAtUtc);
             entity.Property(p => p.CreatedAtUtc).HasDefaultValueSql("timezone('utc', now())");
+
             entity.HasIndex(p => p.Name);
+            entity.HasIndex(p => p.IsDeleted);
+
+            // Global Query Filter cho Soft Delete
+            entity.HasQueryFilter(p => !p.IsDeleted);
         });
 
         // Order (Đơn hàng tích hợp Telesale & GHTK) Configuration

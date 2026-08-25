@@ -23,10 +23,16 @@ public static class GetProductByIdEndpoint
     public static async Task<IResult> HandleAsync(
         Guid id,
         AppDbContext db,
-        CancellationToken cancellationToken)
+        bool includeDeleted = false,
+        CancellationToken cancellationToken = default)
     {
-        var product = await db.Products
-            .AsNoTracking()
+        var query = db.Products.AsNoTracking();
+        if (includeDeleted)
+        {
+            query = query.IgnoreQueryFilters();
+        }
+
+        var product = await query
             .Where(p => p.Id == id)
             .Select(p => new ProductDto(
                 p.Id,
@@ -34,6 +40,8 @@ public static class GetProductByIdEndpoint
                 p.Price,
                 p.CostPrice,
                 p.ImageUrl,
+                p.GoogleSheetUrl,
+                p.IsDeleted,
                 p.CreatedAtUtc,
                 p.UpdatedAtUtc
             ))

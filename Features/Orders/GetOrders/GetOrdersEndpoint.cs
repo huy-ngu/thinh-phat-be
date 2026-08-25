@@ -52,6 +52,7 @@ public static class GetOrdersEndpoint
 
         var query = db.Orders
             .AsNoTracking()
+            .IgnoreQueryFilters()
             .Include(o => o.Customer)
             .Include(o => o.Warehouse)
             .Include(o => o.Items)

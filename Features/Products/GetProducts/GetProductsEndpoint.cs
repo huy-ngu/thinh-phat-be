@@ -29,6 +29,7 @@ public static class GetProductsEndpoint
     public static async Task<IResult> HandleAsync(
         AppDbContext db,
         string? search,
+        bool includeDeleted = false,
         int page = 1,
         int pageSize = 20,
         CancellationToken cancellationToken = default)
@@ -42,6 +43,11 @@ public static class GetProductsEndpoint
         };
 
         var query = db.Products.AsNoTracking();
+
+        if (includeDeleted)
+        {
+            query = query.IgnoreQueryFilters();
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -62,6 +68,8 @@ public static class GetProductsEndpoint
                 p.Price,
                 p.CostPrice,
                 p.ImageUrl,
+                p.GoogleSheetUrl,
+                p.IsDeleted,
                 p.CreatedAtUtc,
                 p.UpdatedAtUtc
             ))

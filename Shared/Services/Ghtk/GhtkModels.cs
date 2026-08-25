@@ -3,6 +3,102 @@ using System.Text.Json.Serialization;
 
 namespace ThinhPhat.Api.Shared.Services.Ghtk;
 
+public sealed class FlexibleStringConverter : JsonConverter<string?>
+{
+    public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        switch (reader.TokenType)
+        {
+            case JsonTokenType.Null:
+                return null;
+            case JsonTokenType.String:
+                return reader.GetString();
+            case JsonTokenType.Number:
+                if (reader.TryGetInt64(out var l)) return l.ToString();
+                if (reader.TryGetDecimal(out var d)) return d.ToString();
+                if (reader.TryGetDouble(out var db)) return db.ToString();
+                return reader.GetDecimal().ToString();
+            case JsonTokenType.True:
+                return "true";
+            case JsonTokenType.False:
+                return "false";
+            default:
+                using (var doc = JsonDocument.ParseValue(ref reader))
+                {
+                    return doc.RootElement.ToString();
+                }
+        }
+    }
+
+    public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)
+    {
+        if (value is null)
+        {
+            writer.WriteNullValue();
+        }
+        else
+        {
+            writer.WriteStringValue(value);
+        }
+    }
+}
+
+public sealed class FlexibleDecimalConverter : JsonConverter<decimal?>
+{
+    public override decimal? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        switch (reader.TokenType)
+        {
+            case JsonTokenType.Null:
+                return null;
+            case JsonTokenType.Number:
+                return reader.GetDecimal();
+            case JsonTokenType.String:
+                var str = reader.GetString();
+                if (string.IsNullOrWhiteSpace(str)) return null;
+                return decimal.TryParse(str, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : null;
+            default:
+                return null;
+        }
+    }
+
+    public override void Write(Utf8JsonWriter writer, decimal? value, JsonSerializerOptions options)
+    {
+        if (value.HasValue)
+            writer.WriteNumberValue(value.Value);
+        else
+            writer.WriteNullValue();
+    }
+}
+
+public sealed class FlexibleIntConverter : JsonConverter<int?>
+{
+    public override int? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        switch (reader.TokenType)
+        {
+            case JsonTokenType.Null:
+                return null;
+            case JsonTokenType.Number:
+                return reader.GetInt32();
+            case JsonTokenType.String:
+                var str = reader.GetString();
+                if (string.IsNullOrWhiteSpace(str)) return null;
+                return int.TryParse(str, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var i) ? i : null;
+            default:
+                return null;
+        }
+    }
+
+    public override void Write(Utf8JsonWriter writer, int? value, JsonSerializerOptions options)
+    {
+        if (value.HasValue)
+            writer.WriteNumberValue(value.Value);
+        else
+            writer.WriteNullValue();
+    }
+}
+
 public sealed record GhtkProductItem(
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("weight")] double Weight,
@@ -46,38 +142,62 @@ public sealed record GhtkCreateOrderRequest(
 
 public sealed record GhtkCreateOrderResponse(
     [property: JsonPropertyName("success")] bool Success,
-    [property: JsonPropertyName("message")] string? Message,
+    [property: JsonPropertyName("message")]
+    [property: JsonConverter(typeof(FlexibleStringConverter))]
+    string? Message,
+
     [property: JsonPropertyName("order")] GhtkOrderResponseData? Order,
-    [property: JsonPropertyName("warning_message")] string? WarningMessage = null
+
+    [property: JsonPropertyName("warning_message")]
+    [property: JsonConverter(typeof(FlexibleStringConverter))]
+    string? WarningMessage = null
 );
 
 public sealed record GhtkOrderResponseData(
-    [property: JsonPropertyName("partner_id")] string? PartnerId,
-    [property: JsonPropertyName("label")] string? Label,
-    [property: JsonPropertyName("area")] string? Area,
-    [property: JsonPropertyName("fee")] object? RawFee,
-    [property: JsonPropertyName("insurance_fee")] object? RawInsuranceFee,
-    [property: JsonPropertyName("tracking_id")] object? TrackingId,
-    [property: JsonPropertyName("estimated_pick_time")] string? EstimatedPickTime,
-    [property: JsonPropertyName("estimated_deliver_time")] string? EstimatedDeliverTime,
-    [property: JsonPropertyName("status_id")] int? StatusId
-)
-{
-    [JsonIgnore]
-    public decimal? Fee => ParseDecimal(RawFee);
+    [property: JsonPropertyName("partner_id")]
+    [property: JsonConverter(typeof(FlexibleStringConverter))]
+    string? PartnerId,
 
-    [JsonIgnore]
-    public decimal? InsuranceFee => ParseDecimal(RawInsuranceFee);
+    [property: JsonPropertyName("label")]
+    [property: JsonConverter(typeof(FlexibleStringConverter))]
+    string? Label,
 
-    private static decimal? ParseDecimal(object? value)
-    {
-        if (value is null) return null;
-        if (value is JsonElement element)
-        {
-            if (element.ValueKind == JsonValueKind.Number && element.TryGetDecimal(out var decVal)) return decVal;
-            if (element.ValueKind == JsonValueKind.String && decimal.TryParse(element.GetString(), out var strVal)) return strVal;
-        }
-        if (decimal.TryParse(value.ToString(), out var parsed)) return parsed;
-        return null;
-    }
-}
+    [property: JsonPropertyName("area")]
+    [property: JsonConverter(typeof(FlexibleStringConverter))]
+    string? Area,
+
+    [property: JsonPropertyName("fee")]
+    [property: JsonConverter(typeof(FlexibleDecimalConverter))]
+    decimal? Fee,
+
+    [property: JsonPropertyName("insurance_fee")]
+    [property: JsonConverter(typeof(FlexibleDecimalConverter))]
+    decimal? InsuranceFee,
+
+    [property: JsonPropertyName("tracking_id")]
+    [property: JsonConverter(typeof(FlexibleStringConverter))]
+    string? TrackingId,
+
+    [property: JsonPropertyName("estimated_pick_time")]
+    [property: JsonConverter(typeof(FlexibleStringConverter))]
+    string? EstimatedPickTime,
+
+    [property: JsonPropertyName("estimated_deliver_time")]
+    [property: JsonConverter(typeof(FlexibleStringConverter))]
+    string? EstimatedDeliverTime,
+
+    [property: JsonPropertyName("status_id")]
+    [property: JsonConverter(typeof(FlexibleIntConverter))]
+    int? StatusId
+);
+
+public sealed record GhtkCancelOrderResponse(
+    [property: JsonPropertyName("success")] bool Success,
+    [property: JsonPropertyName("message")]
+    [property: JsonConverter(typeof(FlexibleStringConverter))]
+    string? Message,
+
+    [property: JsonPropertyName("log_id")]
+    [property: JsonConverter(typeof(FlexibleStringConverter))]
+    string? LogId = null
+);

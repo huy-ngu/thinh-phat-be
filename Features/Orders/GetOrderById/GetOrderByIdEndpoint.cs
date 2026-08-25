@@ -30,6 +30,7 @@ public static class GetOrderByIdEndpoint
     {
         var order = await db.Orders
             .AsNoTracking()
+            .IgnoreQueryFilters()
             .Include(o => o.Customer)
             .Include(o => o.Warehouse)
             .Include(o => o.Items)

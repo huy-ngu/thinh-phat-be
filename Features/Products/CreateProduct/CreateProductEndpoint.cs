@@ -14,7 +14,8 @@ public sealed record CreateProductRequest(
     string Name,
     decimal Price,
     decimal CostPrice,
-    IFormFile? Image
+    IFormFile? Image,
+    string? GoogleSheetUrl = null
 );
 
 public sealed record ProductDto(
@@ -23,6 +24,8 @@ public sealed record ProductDto(
     decimal Price,
     decimal CostPrice,
     string ImageUrl,
+    string? GoogleSheetUrl,
+    bool IsDeleted,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc
 );
@@ -41,6 +44,9 @@ public sealed class CreateProductValidator : AbstractValidator<CreateProductRequ
 
         RuleFor(x => x.CostPrice)
             .GreaterThanOrEqualTo(0).WithMessage("Cost price must be greater than or equal to zero.");
+
+        RuleFor(x => x.GoogleSheetUrl)
+            .MaximumLength(500).WithMessage("Google Sheet URL must not exceed 500 characters.");
 
         RuleFor(x => x.Image)
             .NotNull().WithMessage("Product image file is required.")
@@ -70,13 +76,14 @@ public static class CreateProductEndpoint
         [FromForm] string name,
         [FromForm] decimal price,
         [FromForm] decimal costPrice,
+        [FromForm] string? googleSheetUrl,
         IFormFile image,
         AppDbContext db,
         ICloudinaryService cloudinaryService,
         IValidator<CreateProductRequest> validator,
         CancellationToken cancellationToken)
     {
-        var request = new CreateProductRequest(name, price, costPrice, image);
+        var request = new CreateProductRequest(name, price, costPrice, image, googleSheetUrl);
         var validationResult = await validator.ValidateAsync(request, cancellationToken);
         if (!validationResult.IsValid)
         {
@@ -99,6 +106,7 @@ public static class CreateProductEndpoint
             CostPrice = costPrice,
             ImageUrl = uploadResult.Url,
             ImagePublicId = uploadResult.PublicId,
+            GoogleSheetUrl = string.IsNullOrWhiteSpace(googleSheetUrl) ? null : googleSheetUrl.Trim(),
             CreatedAtUtc = DateTime.UtcNow
         };
 
@@ -112,6 +120,8 @@ public static class CreateProductEndpoint
             Price: product.Price,
             CostPrice: product.CostPrice,
             ImageUrl: product.ImageUrl,
+            GoogleSheetUrl: product.GoogleSheetUrl,
+            IsDeleted: product.IsDeleted,
             CreatedAtUtc: product.CreatedAtUtc,
             UpdatedAtUtc: product.UpdatedAtUtc
         );

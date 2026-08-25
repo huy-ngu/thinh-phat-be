@@ -245,6 +245,7 @@ public static class UpdateOrderEndpoint
         // 6. Trả về kết quả hoàn chỉnh
         var refreshedOrder = await db.Orders
             .AsNoTracking()
+            .IgnoreQueryFilters()
             .Include(o => o.Customer)
             .Include(o => o.Warehouse)
             .Include(o => o.Items)

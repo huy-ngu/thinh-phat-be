@@ -93,6 +93,7 @@ public static class CreateGhtkOrderEndpoint
     {
         // 1. Tải thông tin Order, Customer, Warehouse, Items & Product
         var order = await db.Orders
+            .IgnoreQueryFilters()
             .Include(o => o.Customer)
             .Include(o => o.Warehouse)
             .Include(o => o.Items)

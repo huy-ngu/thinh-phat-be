@@ -5,28 +5,21 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using ThinhPhat.Api.Data;
 using ThinhPhat.Api.Shared.Filters;
+using ThinhPhat.Api.Shared.Security;
 
 namespace ThinhPhat.Api.Features.Auth.RevokeToken;
 
-public sealed record RevokeTokenRequest(string RefreshToken);
+// 1. DTOs
+public sealed record RevokeTokenRequest(string? RefreshToken = null);
 
-public sealed class RevokeTokenValidator : AbstractValidator<RevokeTokenRequest>
-{
-    public RevokeTokenValidator()
-    {
-        RuleFor(x => x.RefreshToken)
-            .NotEmpty().WithMessage("Refresh token is required.");
-    }
-}
-
+// 2. Endpoint Slice & Handler
 public static class RevokeTokenEndpoint
 {
     public static RouteGroupBuilder MapRevokeToken(this RouteGroupBuilder group)
     {
         group.MapPost("/revoke", HandleAsync)
             .WithName("RevokeToken")
-            .WithSummary("Revokes an active refresh token (Logout)")
-            .WithRequestValidation<RevokeTokenRequest>()
+            .WithSummary("Revokes an active refresh token and clears HttpOnly cookie (Logout)")
             .Produces(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);
@@ -35,25 +28,29 @@ public static class RevokeTokenEndpoint
     }
 
     public static async Task<IResult> HandleAsync(
-        RevokeTokenRequest request,
+        HttpContext httpContext,
         AppDbContext db,
-        CancellationToken cancellationToken)
+        RevokeTokenRequest? request = null,
+        CancellationToken cancellationToken = default)
     {
-        var token = await db.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken, cancellationToken);
+        var tokenString = httpContext.Request.Cookies[AuthCookieHelper.RefreshTokenCookieName]
+                          ?? request?.RefreshToken?.Trim();
 
-        if (token is null || token.IsRevoked)
+        // Luôn xóa cookie khỏi trình duyệt client
+        AuthCookieHelper.DeleteRefreshTokenCookie(httpContext.Response, httpContext.Request.IsHttps);
+
+        if (!string.IsNullOrWhiteSpace(tokenString))
         {
-            return TypedResults.Problem(
-                statusCode: StatusCodes.Status404NotFound,
-                title: "Not Found",
-                detail: "Active refresh token not found."
-            );
+            var token = await db.RefreshTokens
+                .FirstOrDefaultAsync(rt => rt.Token == tokenString, cancellationToken);
+
+            if (token is not null && !token.IsRevoked)
+            {
+                token.RevokedAtUtc = DateTime.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
+            }
         }
 
-        token.RevokedAtUtc = DateTime.UtcNow;
-        await db.SaveChangesAsync(cancellationToken);
-
-        return TypedResults.Ok(new { message = "Token revoked successfully." });
+        return TypedResults.Ok(new { message = "Token revoked successfully and cookie cleared." });
     }
 }
