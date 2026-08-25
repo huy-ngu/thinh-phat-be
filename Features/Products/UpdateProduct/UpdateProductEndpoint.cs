@@ -14,7 +14,9 @@ namespace ThinhPhat.Api.Features.Products.UpdateProduct;
 public sealed record UpdateProductRequest(
     string Name,
     decimal Price,
-    IFormFile? Image
+    decimal CostPrice,
+    IFormFile? Image,
+    string? GoogleSheetUrl = null
 );
 
 // 2. Request Validator
@@ -28,6 +30,12 @@ public sealed class UpdateProductValidator : AbstractValidator<UpdateProductRequ
 
         RuleFor(x => x.Price)
             .GreaterThan(0).WithMessage("Price must be greater than zero.");
+
+        RuleFor(x => x.CostPrice)
+            .GreaterThanOrEqualTo(0).WithMessage("Cost price must be greater than or equal to zero.");
+
+        RuleFor(x => x.GoogleSheetUrl)
+            .MaximumLength(500).WithMessage("Google Sheet URL must not exceed 500 characters.");
     }
 }
 
@@ -54,13 +62,15 @@ public static class UpdateProductEndpoint
         Guid id,
         [FromForm] string name,
         [FromForm] decimal price,
+        [FromForm] decimal costPrice,
+        [FromForm] string? googleSheetUrl,
         IFormFile? image,
         AppDbContext db,
         ICloudinaryService cloudinaryService,
         IValidator<UpdateProductRequest> validator,
         CancellationToken cancellationToken)
     {
-        var request = new UpdateProductRequest(name, price, image);
+        var request = new UpdateProductRequest(name, price, costPrice, image, googleSheetUrl);
         var validationResult = await validator.ValidateAsync(request, cancellationToken);
         if (!validationResult.IsValid)
         {
@@ -101,6 +111,8 @@ public static class UpdateProductEndpoint
 
         product.Name = name.Trim();
         product.Price = price;
+        product.CostPrice = costPrice;
+        product.GoogleSheetUrl = string.IsNullOrWhiteSpace(googleSheetUrl) ? null : googleSheetUrl.Trim();
         product.UpdatedAtUtc = DateTime.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
@@ -109,7 +121,10 @@ public static class UpdateProductEndpoint
             Id: product.Id,
             Name: product.Name,
             Price: product.Price,
+            CostPrice: product.CostPrice,
             ImageUrl: product.ImageUrl,
+            GoogleSheetUrl: product.GoogleSheetUrl,
+            IsDeleted: product.IsDeleted,
             CreatedAtUtc: product.CreatedAtUtc,
             UpdatedAtUtc: product.UpdatedAtUtc
         );

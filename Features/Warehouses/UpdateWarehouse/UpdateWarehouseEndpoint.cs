@@ -11,6 +11,9 @@ namespace ThinhPhat.Api.Features.Warehouses.UpdateWarehouse;
 
 public sealed record UpdateWarehouseRequest(
     string Name,
+    string Province,
+    string District,
+    string? Ward,
     string Address,
     string PhoneNumber
 );
@@ -22,6 +25,17 @@ public sealed class UpdateWarehouseValidator : AbstractValidator<UpdateWarehouse
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Warehouse name is required.")
             .MaximumLength(200).WithMessage("Warehouse name must not exceed 200 characters.");
+
+        RuleFor(x => x.Province)
+            .NotEmpty().WithMessage("Province is required.")
+            .MaximumLength(100).WithMessage("Province must not exceed 100 characters.");
+
+        RuleFor(x => x.District)
+            .NotEmpty().WithMessage("District is required.")
+            .MaximumLength(100).WithMessage("District must not exceed 100 characters.");
+
+        RuleFor(x => x.Ward)
+            .MaximumLength(100).WithMessage("Ward must not exceed 100 characters.");
 
         RuleFor(x => x.Address)
             .NotEmpty().WithMessage("Address is required.")
@@ -86,6 +100,9 @@ public static class UpdateWarehouseEndpoint
         }
 
         warehouse.Name = trimmedName;
+        warehouse.Province = request.Province.Trim();
+        warehouse.District = request.District.Trim();
+        warehouse.Ward = string.IsNullOrWhiteSpace(request.Ward) ? null : request.Ward.Trim();
         warehouse.Address = request.Address.Trim();
         warehouse.PhoneNumber = normalizedPhone;
         warehouse.UpdatedAtUtc = DateTime.UtcNow;
@@ -95,6 +112,9 @@ public static class UpdateWarehouseEndpoint
         var response = new WarehouseDto(
             Id: warehouse.Id,
             Name: warehouse.Name,
+            Province: warehouse.Province,
+            District: warehouse.District,
+            Ward: warehouse.Ward,
             Address: warehouse.Address,
             PhoneNumber: warehouse.PhoneNumber,
             CreatedAtUtc: warehouse.CreatedAtUtc,

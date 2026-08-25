@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using ThinhPhat.Api.Features.Orders.CreateOrder;
+using ThinhPhat.Api.Features.Orders.CreateOrderWithCustomer;
 using ThinhPhat.Api.Features.Orders.DeleteOrder;
 using ThinhPhat.Api.Features.Orders.GetOrderById;
 using ThinhPhat.Api.Features.Orders.GetOrders;
@@ -18,6 +19,7 @@ public static class OrderEndpoints
             .RequireAuthorization(); // Yêu cầu đăng nhập để quản lý đơn chốt
 
         group.MapCreateOrder();
+        group.MapCreateOrderWithCustomer();
         group.MapGetOrders();
         group.MapGetOrderById();
         group.MapUpdateOrder();

@@ -13,7 +13,7 @@ public static class DeleteProductEndpoint
     {
         group.MapDelete("/{id:guid}", HandleAsync)
             .WithName("DeleteProduct")
-            .WithSummary("Deletes a product and cleans up its Cloudinary image (Admin only)")
+            .WithSummary("Soft deletes a product by marking it as inactive (Admin only)")
             .RequireAuthorization("AdminOnly")
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status404NotFound)
@@ -26,7 +26,6 @@ public static class DeleteProductEndpoint
     public static async Task<IResult> HandleAsync(
         Guid id,
         AppDbContext db,
-        ICloudinaryService cloudinaryService,
         CancellationToken cancellationToken)
     {
         var product = await db.Products.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
@@ -39,14 +38,11 @@ public static class DeleteProductEndpoint
             );
         }
 
-        // 1. Delete image from Cloudinary if it was stored there
-        if (!string.IsNullOrWhiteSpace(product.ImagePublicId))
-        {
-            await cloudinaryService.DeleteImageAsync(product.ImagePublicId, cancellationToken);
-        }
+        // Soft delete product
+        product.IsDeleted = true;
+        product.DeletedAtUtc = DateTime.UtcNow;
+        product.UpdatedAtUtc = DateTime.UtcNow;
 
-        // 2. Remove product from Database
-        db.Products.Remove(product);
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.NoContent();

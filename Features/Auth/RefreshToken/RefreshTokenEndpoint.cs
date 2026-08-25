@@ -12,7 +12,7 @@ using ThinhPhat.Api.Shared.Security;
 namespace ThinhPhat.Api.Features.Auth.RefreshToken;
 
 // 1. DTOs
-public sealed record RefreshTokenRequest(string RefreshToken);
+public sealed record RefreshTokenRequest(string? RefreshToken = null);
 
 public sealed record RefreshTokenResponse(
     string AccessToken,
@@ -21,25 +21,14 @@ public sealed record RefreshTokenResponse(
     DateTime RefreshTokenExpiresAtUtc
 );
 
-// 2. Validator
-public sealed class RefreshTokenValidator : AbstractValidator<RefreshTokenRequest>
-{
-    public RefreshTokenValidator()
-    {
-        RuleFor(x => x.RefreshToken)
-            .NotEmpty().WithMessage("Refresh token is required.");
-    }
-}
-
-// 3. Endpoint Slice & Handler (Enterprise Token Rotation & Compromise Detection)
+// 2. Endpoint Slice & Handler (Enterprise Token Rotation & Compromise Detection)
 public static class RefreshTokenEndpoint
 {
     public static RouteGroupBuilder MapRefreshToken(this RouteGroupBuilder group)
     {
         group.MapPost("/refresh", HandleAsync)
             .WithName("RefreshToken")
-            .WithSummary("Rotates and issues a new JWT access and refresh token pair")
-            .WithRequestValidation<RefreshTokenRequest>()
+            .WithSummary("Rotates and issues a new JWT access and refresh token pair via HttpOnly Cookie or JSON Body")
             .Produces<RefreshTokenResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest);
@@ -48,15 +37,29 @@ public static class RefreshTokenEndpoint
     }
 
     public static async Task<IResult> HandleAsync(
-        RefreshTokenRequest request,
+        HttpContext httpContext,
         AppDbContext db,
         IJwtProvider jwtProvider,
-        CancellationToken cancellationToken)
+        RefreshTokenRequest? request = null,
+        CancellationToken cancellationToken = default)
     {
+        // 1. Đọc Refresh Token ưu tiên từ HttpOnly Cookie, fallback sang Body (Mobile / Swagger)
+        var tokenString = httpContext.Request.Cookies[AuthCookieHelper.RefreshTokenCookieName]
+                          ?? request?.RefreshToken?.Trim();
+
+        if (string.IsNullOrWhiteSpace(tokenString))
+        {
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Unauthorized",
+                detail: "Refresh token is missing from cookie or request body."
+            );
+        }
+
         var existingToken = await db.RefreshTokens
             .Include(rt => rt.User)
             .ThenInclude(u => u!.Role)
-            .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken, cancellationToken);
+            .FirstOrDefaultAsync(rt => rt.Token == tokenString, cancellationToken);
 
         if (existingToken is null)
         {
@@ -70,7 +73,7 @@ public static class RefreshTokenEndpoint
         // ==============================================================================
         // SECURITY: TOKEN REUSE DETECTION (Compromised Token Prevention)
         // If an already-revoked token is used again, an attacker likely stole it.
-        // Action: Revoke ALL active tokens of this user immediately to protect account.
+        // Action: Revoke ALL active tokens of this user immediately and clear cookie.
         // ==============================================================================
         if (existingToken.IsRevoked)
         {
@@ -86,6 +89,9 @@ public static class RefreshTokenEndpoint
 
             await db.SaveChangesAsync(cancellationToken);
 
+            // Xóa cookie compromised
+            AuthCookieHelper.DeleteRefreshTokenCookie(httpContext.Response, httpContext.Request.IsHttps);
+
             return TypedResults.Problem(
                 statusCode: StatusCodes.Status401Unauthorized,
                 title: "Unauthorized",
@@ -95,6 +101,7 @@ public static class RefreshTokenEndpoint
 
         if (existingToken.IsExpired)
         {
+            AuthCookieHelper.DeleteRefreshTokenCookie(httpContext.Response, httpContext.Request.IsHttps);
             return TypedResults.Problem(
                 statusCode: StatusCodes.Status401Unauthorized,
                 title: "Unauthorized",
@@ -132,6 +139,14 @@ public static class RefreshTokenEndpoint
 
         await db.RefreshTokens.AddAsync(newRefreshToken, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
+
+        // Ghi HttpOnly Cookie mới
+        AuthCookieHelper.AppendRefreshTokenCookie(
+            httpContext.Response,
+            newRefreshTokenString,
+            newRefreshExpiresAt,
+            httpContext.Request.IsHttps
+        );
 
         var response = new RefreshTokenResponse(
             AccessToken: newAccessToken,

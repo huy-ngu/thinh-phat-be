@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ThinhPhat.Api.Data;
 using ThinhPhat.Api.Data.Entities;
-using ThinhPhat.Api.Features.DeliveryOrders.CreateDeliveryOrder;
+using ThinhPhat.Api.Features.Orders.CreateOrder;
 using ThinhPhat.Api.Shared.Services.Ghtk;
 
 namespace ThinhPhat.Api.Features.Ghtk.GhtkWebhook;
@@ -106,7 +106,6 @@ public static class GhtkWebhookEndpoint
                 if (!string.Equals(incomingHash, options.WebhookHash, StringComparison.Ordinal))
                 {
                     logger.LogWarning("Rejected GHTK webhook call due to invalid or missing hash. Incoming: {IncomingHash}", incomingHash);
-                    // Theo GHTK retry policy, trả về message lỗi rõ ràng
                     return TypedResults.Ok(new GhtkWebhookResponse(false, "Chữ ký bảo mật (hash) không hợp lệ."));
                 }
             }
@@ -123,49 +122,49 @@ public static class GhtkWebhookEndpoint
                 "Received GHTK Webhook: LabelId={LabelId}, PartnerId={PartnerId}, StatusId={StatusId}, ActionTime={ActionTime}, Reason={Reason}, Fee={Fee}, Weight={Weight}, PickMoney={PickMoney}",
                 payload.LabelId, payload.PartnerId, payload.StatusId, payload.ActionTime, payload.Reason, payload.Fee, payload.Weight, payload.PickMoney);
 
-            // 3. Tìm đơn giao hàng tương ứng
-            var deliveryOrder = await FindDeliveryOrderAsync(db, payload, cancellationToken);
-            if (deliveryOrder is null)
+            // 3. Tìm Order tương ứng
+            var order = await FindOrderAsync(db, payload, cancellationToken);
+            if (order is null)
             {
                 logger.LogWarning(
-                    "GHTK Webhook could not find matching DeliveryOrder for LabelId: '{LabelId}', PartnerId: '{PartnerId}'",
+                    "GHTK Webhook could not find matching Order for LabelId: '{LabelId}', PartnerId: '{PartnerId}'",
                     payload.LabelId, payload.PartnerId);
 
                 // Trả về HTTP 200 OK để GHTK không retry liên tục đơn hàng không tồn tại
-                return TypedResults.Ok(new GhtkWebhookResponse(true, "Tiếp nhận webhook thành công nhưng không tìm thấy đơn giao hàng tương ứng trong hệ thống."));
+                return TypedResults.Ok(new GhtkWebhookResponse(true, "Tiếp nhận webhook thành công nhưng không tìm thấy đơn hàng tương ứng trong hệ thống."));
             }
 
-            // 4. Cập nhật thông tin DeliveryOrder
+            // 4. Cập nhật thông tin Order
             if (!string.IsNullOrWhiteSpace(payload.LabelId))
             {
-                deliveryOrder.GhtkId = payload.LabelId.Trim();
+                order.GhtkId = payload.LabelId.Trim();
             }
 
             if (payload.Fee.HasValue)
             {
-                deliveryOrder.ShippingFee = payload.Fee.Value;
+                order.ShippingFee = payload.Fee.Value;
             }
 
             if (payload.Weight.HasValue && payload.Weight.Value > 0)
             {
-                deliveryOrder.Weight = payload.Weight.Value;
+                order.Weight = payload.Weight.Value;
             }
 
             // Cập nhật trạng thái
-            var isStatusValid = payload.StatusId.HasValue && Enum.IsDefined(typeof(DeliveryOrderStatus), payload.StatusId.Value);
-            var newStatus = isStatusValid ? (DeliveryOrderStatus)payload.StatusId!.Value : deliveryOrder.Status;
+            var isStatusValid = payload.StatusId.HasValue && Enum.IsDefined(typeof(OrderStatus), payload.StatusId.Value);
+            var newStatus = isStatusValid ? (OrderStatus)payload.StatusId!.Value : order.Status;
 
             if (isStatusValid)
             {
-                deliveryOrder.Status = newStatus;
+                order.Status = newStatus;
             }
 
             if (!string.IsNullOrWhiteSpace(payload.Reason))
             {
-                deliveryOrder.Note = payload.Reason.Trim();
+                order.Note = payload.Reason.Trim();
             }
 
-            deliveryOrder.UpdatedAtUtc = DateTime.UtcNow;
+            order.UpdatedAtUtc = DateTime.UtcNow;
 
             // 5. Xác định thời gian diễn ra sự kiện (action_time ISO 8601)
             var eventTimeUtc = DateTime.UtcNow;
@@ -175,8 +174,8 @@ public static class GhtkWebhookEndpoint
                 eventTimeUtc = parsedOffset.UtcDateTime;
             }
 
-            // 6. Tạo nội dung lịch sử trạng thái (DeliveryOrderStatusHistory)
-            var statusDisplayName = CreateDeliveryOrderEndpoint.GetDeliveryStatusDisplayName(newStatus);
+            // 6. Tạo nội dung lịch sử trạng thái (OrderStatusHistory)
+            var statusDisplayName = CreateOrderEndpoint.GetStatusDisplayName(newStatus);
             var noteComponents = new List<string> { $"GHTK cập nhật: {statusDisplayName}" };
 
             if (!string.IsNullOrWhiteSpace(payload.Reason))
@@ -207,29 +206,29 @@ public static class GhtkWebhookEndpoint
             var historyNote = string.Join(" | ", noteComponents);
 
             // Kiểm tra tính Idempotent: tránh trùng lặp bản ghi lịch sử nếu GHTK retry
-            var isDuplicateHistory = deliveryOrder.StatusHistories.Any(h =>
+            var isDuplicateHistory = order.StatusHistories.Any(h =>
                 h.Status == newStatus &&
                 (Math.Abs((h.CreatedAtUtc - eventTimeUtc).TotalSeconds) < 60 || h.Note == historyNote));
 
             if (!isDuplicateHistory)
             {
-                var history = new DeliveryOrderStatusHistory
+                var history = new OrderStatusHistory
                 {
                     Id = Guid.NewGuid(),
-                    DeliveryOrderId = deliveryOrder.Id,
+                    OrderId = order.Id,
                     Status = newStatus,
                     Note = historyNote,
                     CreatedAtUtc = eventTimeUtc
                 };
 
-                await db.DeliveryOrderStatusHistories.AddAsync(history, cancellationToken);
+                await db.OrderStatusHistories.AddAsync(history, cancellationToken);
             }
 
             await db.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation(
-                "Successfully synchronized GHTK status for DeliveryOrder {Id} ({GhtkId}) to '{StatusName}' ({StatusId})",
-                deliveryOrder.Id, deliveryOrder.GhtkId, statusDisplayName, payload.StatusId);
+                "Successfully synchronized GHTK status for Order {Id} ({GhtkId}) to '{StatusName}' ({StatusId})",
+                order.Id, order.GhtkId, statusDisplayName, payload.StatusId);
 
             return TypedResults.Ok(new GhtkWebhookResponse(true, $"Đồng bộ trạng thái GHTK thành công: {statusDisplayName}"));
         }
@@ -240,7 +239,7 @@ public static class GhtkWebhookEndpoint
         }
     }
 
-    private static async Task<DeliveryOrder?> FindDeliveryOrderAsync(
+    private static async Task<Order?> FindOrderAsync(
         AppDbContext db,
         GhtkWebhookPayload payload,
         CancellationToken cancellationToken)
@@ -249,9 +248,9 @@ public static class GhtkWebhookEndpoint
         if (!string.IsNullOrWhiteSpace(payload.LabelId))
         {
             var cleanLabel = payload.LabelId.Trim();
-            var order = await db.DeliveryOrders
-                .Include(d => d.StatusHistories)
-                .FirstOrDefaultAsync(d => d.GhtkId == cleanLabel, cancellationToken);
+            var order = await db.Orders
+                .Include(o => o.StatusHistories)
+                .FirstOrDefaultAsync(o => o.GhtkId == cleanLabel, cancellationToken);
 
             if (order is not null) return order;
         }
@@ -261,27 +260,20 @@ public static class GhtkWebhookEndpoint
         {
             var cleanPartnerId = payload.PartnerId.Trim();
 
-            // 2.1 Nếu partner_id là Guid -> kiểm tra DeliveryOrder.Id
+            // 2.1 Nếu partner_id là Guid -> kiểm tra Order.Id
             if (Guid.TryParse(cleanPartnerId, out var partnerGuid))
             {
-                var order = await db.DeliveryOrders
-                    .Include(d => d.StatusHistories)
-                    .FirstOrDefaultAsync(d => d.Id == partnerGuid, cancellationToken);
-
-                if (order is not null) return order;
-
-                // 2.2 Kiểm tra theo OrderId (đơn chốt)
-                order = await db.DeliveryOrders
-                    .Include(d => d.StatusHistories)
-                    .FirstOrDefaultAsync(d => d.OrderId == partnerGuid, cancellationToken);
+                var order = await db.Orders
+                    .Include(o => o.StatusHistories)
+                    .FirstOrDefaultAsync(o => o.Id == partnerGuid, cancellationToken);
 
                 if (order is not null) return order;
             }
 
-            // 2.3 Kiểm tra partner_id lưu dưới dạng GhtkId
-            var byGhtkId = await db.DeliveryOrders
-                .Include(d => d.StatusHistories)
-                .FirstOrDefaultAsync(d => d.GhtkId == cleanPartnerId, cancellationToken);
+            // 2.2 Kiểm tra partner_id lưu dưới dạng GhtkId
+            var byGhtkId = await db.Orders
+                .Include(o => o.StatusHistories)
+                .FirstOrDefaultAsync(o => o.GhtkId == cleanPartnerId, cancellationToken);
 
             if (byGhtkId is not null) return byGhtkId;
         }

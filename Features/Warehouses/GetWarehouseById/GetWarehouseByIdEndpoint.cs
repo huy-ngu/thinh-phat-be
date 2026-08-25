@@ -31,6 +31,9 @@ public static class GetWarehouseByIdEndpoint
             .Select(w => new WarehouseDto(
                 w.Id,
                 w.Name,
+                w.Province,
+                w.District,
+                w.Ward,
                 w.Address,
                 w.PhoneNumber,
                 w.CreatedAtUtc,

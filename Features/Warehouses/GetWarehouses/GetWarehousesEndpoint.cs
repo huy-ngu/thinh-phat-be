@@ -48,6 +48,9 @@ public static class GetWarehousesEndpoint
             var searchKeyword = search.Trim().ToLower();
             query = query.Where(w => w.Name.ToLower().Contains(searchKeyword) 
                                   || w.Address.ToLower().Contains(searchKeyword) 
+                                  || w.Province.ToLower().Contains(searchKeyword) 
+                                  || w.District.ToLower().Contains(searchKeyword) 
+                                  || (w.Ward != null && w.Ward.ToLower().Contains(searchKeyword)) 
                                   || w.PhoneNumber.Contains(searchKeyword));
         }
 
@@ -60,6 +63,9 @@ public static class GetWarehousesEndpoint
             .Select(w => new WarehouseDto(
                 w.Id,
                 w.Name,
+                w.Province,
+                w.District,
+                w.Ward,
                 w.Address,
                 w.PhoneNumber,
                 w.CreatedAtUtc,

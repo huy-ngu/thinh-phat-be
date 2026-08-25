@@ -13,7 +13,6 @@ using Microsoft.OpenApi;
 using ThinhPhat.Api.Data;
 using ThinhPhat.Api.Features.Auth;
 using ThinhPhat.Api.Features.Customers;
-using ThinhPhat.Api.Features.DeliveryOrders;
 using ThinhPhat.Api.Features.Ghtk;
 using ThinhPhat.Api.Features.Orders;
 using ThinhPhat.Api.Features.Products;
@@ -23,6 +22,7 @@ using ThinhPhat.Api.Shared.Errors;
 using ThinhPhat.Api.Shared.Security;
 using ThinhPhat.Api.Shared.Services.Cloudinary;
 using ThinhPhat.Api.Shared.Services.Ghtk;
+using ThinhPhat.Api.Shared.Services.GoogleSheets;
 
 var builder = WebApplication.CreateBuilder(args);
 //test deploy
@@ -183,6 +183,13 @@ builder.Services.AddHttpClient<IGhtkService, GhtkService>((serviceProvider, clie
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
+// Register Google Sheet Sync Service (Timeout 5s, không chặn request đặt hàng)
+builder.Services.AddHttpClient(GoogleSheetService.HttpClientName, client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+builder.Services.AddSingleton<IGoogleSheetService, GoogleSheetService>();
+
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
 
@@ -240,7 +247,6 @@ app.MapCustomerEndpoints();
 app.MapProductEndpoints();
 app.MapOrderEndpoints();
 app.MapWarehouseEndpoints();
-app.MapDeliveryOrderEndpoints();
 app.MapGhtkEndpoints();
 
 app.Run();
