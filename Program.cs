@@ -255,12 +255,23 @@ app.UseAuthorization();  // 2. Phân quyền
 // ==========================================
 // 8. HEALTH CHECK & KEEP-ALIVE (Render & UptimeRobot)
 // ==========================================
-app.MapGet("/healthz", async (
+var healthHandler = async (
     AppDbContext db,
     ILogger<Program> logger,
     HttpContext context,
     CancellationToken ct) =>
 {
+    var clientIp = context.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+        ?? context.Connection.RemoteIpAddress?.ToString()
+        ?? "unknown";
+
+    // Xử lý riêng cho method HEAD (UptimeRobot mặc định dùng HTTP HEAD để tiết kiệm băng thông)
+    if (HttpMethods.IsHead(context.Request.Method) || HttpMethods.IsOptions(context.Request.Method))
+    {
+        logger.LogInformation("[HealthCheck {Method}] Ping từ IP: {ClientIp}", context.Request.Method, clientIp);
+        return Results.Ok();
+    }
+
     var sw = System.Diagnostics.Stopwatch.StartNew();
     bool dbConnected = false;
     string dbMessage = "Database connection OK";
@@ -285,17 +296,13 @@ app.MapGet("/healthz", async (
         sw.Stop();
     }
 
-    var clientIp = context.Request.Headers["X-Forwarded-For"].FirstOrDefault()
-        ?? context.Connection.RemoteIpAddress?.ToString()
-        ?? "unknown";
-
     if (dbConnected)
     {
-        logger.LogInformation("[HealthCheck] Ping từ IP: {ClientIp} | DB: OK ({Elapsed:F2}ms)", clientIp, sw.Elapsed.TotalMilliseconds);
+        logger.LogInformation("[HealthCheck {Method}] Ping từ IP: {ClientIp} | DB: OK ({Elapsed:F2}ms)", context.Request.Method, clientIp, sw.Elapsed.TotalMilliseconds);
     }
     else
     {
-        logger.LogWarning("[HealthCheck] Ping từ IP: {ClientIp} | DB LỖI: {DbMessage} ({Elapsed:F2}ms)", clientIp, dbMessage, sw.Elapsed.TotalMilliseconds);
+        logger.LogWarning("[HealthCheck {Method}] Ping từ IP: {ClientIp} | DB LỖI: {DbMessage} ({Elapsed:F2}ms)", context.Request.Method, clientIp, dbMessage, sw.Elapsed.TotalMilliseconds);
     }
 
     var response = new
@@ -313,14 +320,16 @@ app.MapGet("/healthz", async (
 
     // Luôn trả về 200 OK để UptimeRobot / Ping bot không báo lỗi DOWN và giữ Render thức 24/7
     return Results.Ok(response);
-})
-.AllowAnonymous()
-.WithName("HealthCheck")
-.WithSummary("Kiểm tra trạng thái máy chủ và kết nối database (Keep-alive cho Render & UptimeRobot)")
-.WithTags("Health")
-.Produces(StatusCodes.Status200OK);
+};
 
-app.MapGet("/health", () => Results.Ok(new { status = "Healthy", app = "Running", timestampUtc = DateTime.UtcNow }))
+app.MapMethods("/healthz", ["GET", "HEAD", "POST", "OPTIONS"], healthHandler)
+   .AllowAnonymous()
+   .WithName("HealthCheck")
+   .WithSummary("Kiểm tra trạng thái máy chủ và kết nối database (Hỗ trợ GET, HEAD, POST cho UptimeRobot / Render)")
+   .WithTags("Health")
+   .Produces(StatusCodes.Status200OK);
+
+app.MapMethods("/health", ["GET", "HEAD", "POST", "OPTIONS"], healthHandler)
    .AllowAnonymous()
    .ExcludeFromDescription();
 
