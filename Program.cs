@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -85,6 +86,7 @@ builder.Services.AddRateLimiter(options =>
 
         // Bypass cho HealthCheck và Swagger UI
         if (path.StartsWith("/healthz", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase))
         {
             return RateLimitPartition.GetNoLimiter("BypassLimiter");
@@ -250,7 +252,60 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication(); // 1. Xác thực danh tính
 app.UseAuthorization();  // 2. Phân quyền
 
-app.MapHealthChecks("/healthz");
+// ==========================================
+// 8. HEALTH CHECK & KEEP-ALIVE (Render & UptimeRobot)
+// ==========================================
+app.MapGet("/healthz", async (AppDbContext db, CancellationToken ct) =>
+{
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    bool dbConnected = false;
+    string dbMessage = "Database connection OK";
+
+    try
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(4)); // Timeout 4s tránh treo request
+        dbConnected = await db.Database.CanConnectAsync(cts.Token);
+        if (!dbConnected)
+        {
+            dbMessage = "Cannot connect to database (CanConnect returned false). Check connection string.";
+        }
+    }
+    catch (Exception ex)
+    {
+        dbConnected = false;
+        dbMessage = $"Database check error: {ex.Message}";
+    }
+    finally
+    {
+        sw.Stop();
+    }
+
+    var response = new
+    {
+        status = dbConnected ? "Healthy" : "Degraded",
+        app = "Running",
+        totalDuration = $"{sw.Elapsed.TotalMilliseconds:F2}ms",
+        database = new
+        {
+            status = dbConnected ? "Healthy" : "Unhealthy",
+            message = dbMessage
+        },
+        timestampUtc = DateTime.UtcNow
+    };
+
+    // Luôn trả về 200 OK để UptimeRobot / Ping bot không báo lỗi DOWN và giữ Render thức 24/7
+    return Results.Ok(response);
+})
+.AllowAnonymous()
+.WithName("HealthCheck")
+.WithSummary("Kiểm tra trạng thái máy chủ và kết nối database (Keep-alive cho Render & UptimeRobot)")
+.WithTags("Health")
+.Produces(StatusCodes.Status200OK);
+
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy", app = "Running", timestampUtc = DateTime.UtcNow }))
+   .AllowAnonymous()
+   .ExcludeFromDescription();
 
 // Register Feature Slices
 app.MapAuthEndpoints();

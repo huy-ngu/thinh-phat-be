@@ -792,12 +792,25 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
 
 ---
 
-### 4.7 System Health Check
+### 4.7 System Health Check & Keep-Alive
 
-#### 🔹 [GET] `/healthz`
-- **Mô tả:** Kiểm tra tình trạng hoạt động của API và Database PostgreSQL.
-- **Quyền hạn:** Public
-- **Response (200 OK):** `Healthy`
+#### 🔹 [GET] `/healthz` hoặc `/health`
+- **Mô tả:** Kiểm tra tình trạng hoạt động thực tế của Backend và kết nối Database PostgreSQL (Supabase). Phù hợp cấu hình UptimeRobot / cron-job để giữ Render không ngủ đông và giữ Supabase không bị tạm dừng sau 7 ngày.
+- **Quyền hạn:** Public / Anonymous (Đã bypass Rate Limiting)
+- **Response (200 OK):**
+  ```json
+  {
+    "status": "Healthy",
+    "totalDuration": "8.45ms",
+    "database": {
+      "status": "Healthy",
+      "duration": "8.20ms",
+      "description": "Database connection OK"
+    },
+    "timestampUtc": "2026-08-27T15:45:00.1234567Z"
+  }
+  ```
+- **Response (503 Service Unavailable):** Khi mất kết nối database hoặc hệ thống gặp sự cố.
 
 ---
 
