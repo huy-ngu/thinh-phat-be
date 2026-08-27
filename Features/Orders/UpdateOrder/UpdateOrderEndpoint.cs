@@ -27,7 +27,7 @@ public sealed record UpdateOrderRequest(
     decimal? TotalAmount = null,
     decimal? ShippingFee = null,
     decimal? Weight = null,
-    OrderStatus Status = OrderStatus.New,
+    OrderStatus? Status = null,
     string? Note = null,
     List<UpdateOrderItemRequest>? Items = null
 );
@@ -65,7 +65,7 @@ public sealed class UpdateOrderValidator : AbstractValidator<UpdateOrderRequest>
             .GreaterThanOrEqualTo(0).When(x => x.Weight.HasValue).WithMessage("Weight must be greater than or equal to 0.");
 
         RuleFor(x => x.Status)
-            .IsInEnum().WithMessage("Invalid order status.");
+            .IsInEnum().When(x => x.Status.HasValue).WithMessage("Invalid order status.");
 
         RuleFor(x => x.Note)
             .MaximumLength(500).WithMessage("Note must not exceed 500 characters.");
@@ -156,41 +156,71 @@ public static class UpdateOrderEndpoint
             warehouseName = warehouse.Name;
         }
 
-        // 3. Xử lý trạng thái mới & ghi log lịch sử
-        if (order.Status != request.Status)
+        // 3. Xử lý trạng thái mới & ghi log lịch sử (nếu có truyền status và có sự thay đổi)
+        if (request.Status.HasValue && order.Status != request.Status.Value)
         {
+            var newStatus = request.Status.Value;
             var history = new OrderStatusHistory
             {
                 Id = Guid.NewGuid(),
                 OrderId = order.Id,
-                Status = request.Status,
+                Status = newStatus,
                 Note = string.IsNullOrWhiteSpace(request.Note)
-                    ? $"Cập nhật trạng thái: {CreateOrderEndpoint.GetStatusDisplayName(request.Status)}"
-                    : $"Cập nhật trạng thái sang {CreateOrderEndpoint.GetStatusDisplayName(request.Status)}: {request.Note.Trim()}",
+                    ? $"Cập nhật trạng thái: {CreateOrderEndpoint.GetStatusDisplayName(newStatus)}"
+                    : $"Cập nhật trạng thái sang {CreateOrderEndpoint.GetStatusDisplayName(newStatus)}: {request.Note.Trim()}",
                 CreatedAtUtc = DateTime.UtcNow
             };
 
             await db.OrderStatusHistories.AddAsync(history, cancellationToken);
-            order.Status = request.Status;
+            order.Status = newStatus;
         }
 
-        // 4. Cập nhật Order Items
+        // 4. Cập nhật Order Items theo cơ chế Diff / Upsert
         decimal calculatedItemsTotal = 0m;
         if (request.Items != null)
         {
-            // Xóa các items cũ
-            db.OrderItems.RemoveRange(order.Items);
-            order.Items.Clear();
+            var requestItemsGrouped = request.Items
+                .GroupBy(i => i.ProductId)
+                .Select(g => new
+                {
+                    ProductId = g.Key,
+                    Quantity = g.Sum(x => x.Quantity),
+                    UnitPrice = g.Last().UnitPrice
+                })
+                .ToList();
 
-            if (request.Items.Count > 0)
+            var requestProductIds = requestItemsGrouped.Select(i => i.ProductId).ToHashSet();
+
+            // 1. Xử lý các item cũ trong DB: Xóa những item không còn trong request (và dọn dẹp các dòng trùng lặp nếu có)
+            var existingItemsByProduct = order.Items.GroupBy(i => i.ProductId).ToDictionary(g => g.Key, g => g.ToList());
+            foreach (var (productId, existingList) in existingItemsByProduct)
             {
-                var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
+                if (!requestProductIds.Contains(productId))
+                {
+                    foreach (var item in existingList)
+                    {
+                        db.OrderItems.Remove(item);
+                    }
+                }
+                else if (existingList.Count > 1)
+                {
+                    // Nếu có dòng trùng lặp ProductId trong DB, giữ lại 1 dòng và xóa các dòng thừa
+                    for (int i = 1; i < existingList.Count; i++)
+                    {
+                        db.OrderItems.Remove(existingList[i]);
+                    }
+                }
+            }
+
+            if (requestItemsGrouped.Count > 0)
+            {
+                var productIds = requestItemsGrouped.Select(i => i.ProductId).ToList();
                 var products = await db.Products
                     .AsNoTracking()
                     .Where(p => productIds.Contains(p.Id))
                     .ToDictionaryAsync(p => p.Id, cancellationToken);
 
-                foreach (var itemReq in request.Items)
+                foreach (var itemReq in requestItemsGrouped)
                 {
                     if (!products.TryGetValue(itemReq.ProductId, out var product))
                     {
@@ -205,17 +235,28 @@ public static class UpdateOrderEndpoint
                     var totalPrice = unitPrice * itemReq.Quantity;
                     calculatedItemsTotal += totalPrice;
 
-                    var orderItem = new OrderItem
+                    var existingItem = order.Items.FirstOrDefault(i => i.ProductId == itemReq.ProductId);
+                    if (existingItem != null)
                     {
-                        Id = Guid.NewGuid(),
-                        OrderId = order.Id,
-                        ProductId = product.Id,
-                        Quantity = itemReq.Quantity,
-                        UnitPrice = unitPrice,
-                        TotalPrice = totalPrice
-                    };
-
-                    order.Items.Add(orderItem);
+                        // Cập nhật item hiện có
+                        existingItem.Quantity = itemReq.Quantity;
+                        existingItem.UnitPrice = unitPrice;
+                        existingItem.TotalPrice = totalPrice;
+                    }
+                    else
+                    {
+                        // Thêm item mới với AddAsync để EF Core gán EntityState.Added thay vì Modified
+                        var newItem = new OrderItem
+                        {
+                            Id = Guid.NewGuid(),
+                            OrderId = order.Id,
+                            ProductId = product.Id,
+                            Quantity = itemReq.Quantity,
+                            UnitPrice = unitPrice,
+                            TotalPrice = totalPrice
+                        };
+                        await db.OrderItems.AddAsync(newItem, cancellationToken);
+                    }
                 }
             }
         }
