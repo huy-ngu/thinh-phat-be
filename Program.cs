@@ -255,7 +255,11 @@ app.UseAuthorization();  // 2. Phân quyền
 // ==========================================
 // 8. HEALTH CHECK & KEEP-ALIVE (Render & UptimeRobot)
 // ==========================================
-app.MapGet("/healthz", async (AppDbContext db, CancellationToken ct) =>
+app.MapGet("/healthz", async (
+    AppDbContext db,
+    ILogger<Program> logger,
+    HttpContext context,
+    CancellationToken ct) =>
 {
     var sw = System.Diagnostics.Stopwatch.StartNew();
     bool dbConnected = false;
@@ -279,6 +283,19 @@ app.MapGet("/healthz", async (AppDbContext db, CancellationToken ct) =>
     finally
     {
         sw.Stop();
+    }
+
+    var clientIp = context.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+        ?? context.Connection.RemoteIpAddress?.ToString()
+        ?? "unknown";
+
+    if (dbConnected)
+    {
+        logger.LogInformation("[HealthCheck] Ping từ IP: {ClientIp} | DB: OK ({Elapsed:F2}ms)", clientIp, sw.Elapsed.TotalMilliseconds);
+    }
+    else
+    {
+        logger.LogWarning("[HealthCheck] Ping từ IP: {ClientIp} | DB LỖI: {DbMessage} ({Elapsed:F2}ms)", clientIp, dbMessage, sw.Elapsed.TotalMilliseconds);
     }
 
     var response = new
