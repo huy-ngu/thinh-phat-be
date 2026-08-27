@@ -75,8 +75,8 @@ public static class CancelGhtkOrderEndpoint
             return TypedResults.BadRequest(ghtkResponse);
         }
 
-        // 4. Cập nhật trạng thái đơn hàng sang Cancelled (-4) và ghi nhận lịch sử trạng thái
-        order.Status = OrderStatus.Cancelled;
+        // 4. Cập nhật trạng thái đơn hàng sang GhtkCancelled (-1) và ghi nhận lịch sử trạng thái
+        order.Status = OrderStatus.GhtkCancelled;
         order.UpdatedAtUtc = DateTime.UtcNow;
 
         var noteDetails = new List<string> { $"Hủy đơn hàng trên GHTK thành công (Mã GHTK: {cleanGhtkId})" };
@@ -93,7 +93,7 @@ public static class CancelGhtkOrderEndpoint
         {
             Id = Guid.NewGuid(),
             OrderId = order.Id,
-            Status = OrderStatus.Cancelled,
+            Status = OrderStatus.GhtkCancelled,
             Note = string.Join(" | ", noteDetails),
             CreatedAtUtc = DateTime.UtcNow
         };

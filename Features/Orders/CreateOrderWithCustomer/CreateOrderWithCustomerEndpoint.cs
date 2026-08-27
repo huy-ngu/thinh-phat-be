@@ -95,7 +95,7 @@ public static class CreateOrderWithCustomerEndpoint
     {
         group.MapPost("/with-customer", HandleAsync)
             .WithName("CreateOrderWithCustomer")
-            .WithSummary("Tạo khách hàng (nếu SĐT chưa có trong DB) và tạo đơn hàng với trạng thái mặc định -1 (Mới tạo)")
+            .WithSummary("Tạo khách hàng (nếu SĐT chưa có trong DB) và tạo đơn hàng với trạng thái mặc định -2 (Mới tạo)")
             .AllowAnonymous()
             .WithRequestValidation<CreateOrderWithCustomerRequest>()
             .Produces<OrderDto>(StatusCodes.Status201Created)
@@ -222,7 +222,7 @@ public static class CreateOrderWithCustomerEndpoint
             });
         }
 
-        // 3. Khởi tạo Order: totalAmount tự tính, weight = 3, shippingFee = null, note = null, status = -1 (New)
+        // 3. Khởi tạo Order: totalAmount tự tính, weight = 3, shippingFee = null, note = null, status = -2 (New)
         var order = new Order
         {
             Id = orderId,
@@ -235,7 +235,7 @@ public static class CreateOrderWithCustomerEndpoint
             TotalAmount = calculatedItemsTotal,
             ShippingFee = null,
             Weight = 3m,
-            Status = OrderStatus.New, // -1 Mới tạo
+            Status = OrderStatus.New, // -2 Mới tạo
             Note = null,
             CreatedAtUtc = DateTime.UtcNow,
             Items = orderItems

@@ -317,11 +317,12 @@ public static class CreateOrderEndpoint
 
     public static string GetStatusDisplayName(OrderStatus status) => status switch
     {
+        OrderStatus.GhtkCancelled => "Hủy đơn hàng GHTK",
         OrderStatus.Done => "Đã chốt thành công",
         OrderStatus.New => "Mới tạo",
         OrderStatus.NoAnswer => "Không nghe máy",
         OrderStatus.CallbackLater => "Hẹn gọi lại",
-        OrderStatus.Cancelled => "Hủy đơn hàng",
+        OrderStatus.Cancelled => "Khách hủy / Không mua",
         OrderStatus.OutOfStock => "Hết hàng",
         OrderStatus.Duplicate => "Trùng đơn",
         OrderStatus.Confirmed => "Chốt đơn (Chờ GHTK)",
