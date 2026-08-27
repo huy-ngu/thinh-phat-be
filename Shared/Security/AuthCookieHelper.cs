@@ -18,10 +18,10 @@ public static class AuthCookieHelper
     {
         response.Cookies.Append(RefreshTokenCookieName, refreshToken, new CookieOptions
         {
-            HttpOnly = true,                                     // Chống XSS (JS không thể đọc cookie)
-            Secure = isHttps,                                    // True trên HTTPS, False trên Localhost HTTP
-            SameSite = SameSiteMode.Lax,                         // Hỗ trợ cả SPA và subdomains
-            Path = AuthCookiePath,                               // Chỉ gửi kèm cookie cho các endpoint /api/v1/auth
+            HttpOnly = true,                                           // Chống XSS (JS không thể đọc cookie)
+            Secure = isHttps,                                          // Bắt buộc True khi SameSite=None trên HTTPS
+            SameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax, // None khi HTTPS (hỗ trợ Cross-site FE - BE), Lax trên Localhost HTTP
+            Path = AuthCookiePath,                                     // Chỉ gửi kèm cookie cho các endpoint /api/v1/auth
             Expires = new DateTimeOffset(expiresAtUtc)
         });
     }
@@ -37,7 +37,7 @@ public static class AuthCookieHelper
         {
             HttpOnly = true,
             Secure = isHttps,
-            SameSite = SameSiteMode.Lax,
+            SameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax,
             Path = AuthCookiePath
         });
     }
