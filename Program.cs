@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
@@ -25,6 +26,15 @@ using ThinhPhat.Api.Shared.Services.Ghtk;
 using ThinhPhat.Api.Shared.Services.GoogleSheets;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Cấu hình Forwarded Headers hỗ trợ Reverse Proxy (Render, Cloudflare, Nginx, Docker)
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 //test deploy
 // ==========================================
 // 1. PERFORMANCE & PAYLOAD TUNING
@@ -224,6 +234,7 @@ var app = builder.Build();
 // ==========================================
 // 7. PIPELINE MIDDLEWARES (Thứ tự CỰC KỲ QUAN TRỌNG)
 // ==========================================
+app.UseForwardedHeaders(); // Bắt buộc đặt đầu tiên để nhận diện đúng HTTPS và client IP từ Reverse Proxy (Render)
 app.UseExceptionHandler();
 app.UseCors("AllowAll");
 
@@ -250,3 +261,5 @@ app.MapWarehouseEndpoints();
 app.MapGhtkEndpoints();
 
 app.Run();
+
+// link sheet : https://script.google.com/macros/s/AKfycbxI1QjNocv2JF6iueoleCSZ1fCcEq0_RpmzsaI4mYEmxgRjhC1sRfo08S3572iJUGjrPQ/exec
