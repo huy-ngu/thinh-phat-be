@@ -30,7 +30,10 @@ public sealed record CreateOrderWithCustomerRequest(
     string Address,
 
     // Danh sách sản phẩm & số lượng
-    List<CreateOrderWithCustomerItemRequest> Items
+    List<CreateOrderWithCustomerItemRequest> Items,
+
+    // Link Webhook Google Apps Script của Sheet nhận đơn (tùy chọn)
+    string? SheetUrl = null
 );
 
 // 2. Request Validator
@@ -78,6 +81,10 @@ public sealed class CreateOrderWithCustomerValidator : AbstractValidator<CreateO
                 .GreaterThan(0).WithMessage("Số lượng sản phẩm phải lớn hơn 0.")
                 .LessThanOrEqualTo(1000).WithMessage("Số lượng sản phẩm trong một đơn không được vượt quá 1000.");
         });
+
+        // Link Google Sheet Webhook (nếu có truyền)
+        RuleFor(x => x.SheetUrl)
+            .MaximumLength(1000).WithMessage("Sheet URL không được vượt quá 1000 ký tự.");
     }
 }
 
@@ -187,15 +194,9 @@ public static class CreateOrderWithCustomerEndpoint
             return $"{name} (SL: {i.Quantity})";
         }));
 
-        var sheetUrls = products.Values
-            .Select(p => p.GoogleSheetUrl)
-            .Where(url => !string.IsNullOrWhiteSpace(url))
-            .Distinct()
-            .ToList();
-
         void TriggerGoogleSheetSync()
         {
-            if (sheetUrls.Count == 0) return;
+            if (string.IsNullOrWhiteSpace(request.SheetUrl)) return;
 
             var payload = new GoogleSheetOrderPayload(
                 OrderTime: orderTimeFormatted,
@@ -208,20 +209,17 @@ public static class CreateOrderWithCustomerEndpoint
             );
 
             // Bắn bất đồng bộ (Non-blocking) để không làm tăng độ trễ phản hồi của API
-            foreach (var url in sheetUrls)
+            _ = Task.Run(async () =>
             {
-                _ = Task.Run(async () =>
+                try
                 {
-                    try
-                    {
-                        await googleSheetService.SendOrderToSheetAsync(url!, payload, CancellationToken.None);
-                    }
-                    catch
-                    {
-                        // Nuốt lỗi task nền để tránh unhandled task exceptions
-                    }
-                });
-            }
+                    await googleSheetService.SendOrderToSheetAsync(request.SheetUrl.Trim(), payload, CancellationToken.None);
+                }
+                catch
+                {
+                    // Nuốt lỗi task nền để tránh unhandled task exceptions
+                }
+            });
         }
 
         // 3. Khởi tạo Order: totalAmount tự tính, weight = 3, shippingFee = null, note = null, status = -1 (New)

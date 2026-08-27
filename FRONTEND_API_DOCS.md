@@ -176,6 +176,7 @@ export interface ProductDto {
   price: number;
   costPrice: number;
   imageUrl: string;
+  isDeleted: boolean;
   createdAtUtc: string;
   updatedAtUtc: string | null;
 }
@@ -574,10 +575,11 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
         "productId": "e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b",
         "quantity": 2
       }
-    ]
+    ],
+    "sheetUrl": "https://script.google.com/macros/s/.../exec"
   }
   ```
-  *(Ghi chú: `totalAmount` tự động tính theo giá sản phẩm trong DB * số lượng; `weight` mặc định = 3; `shippingFee`, `note`, `warehouseId` để null).*
+  *(Ghi chú: `sheetUrl` là tùy chọn (optional) - Link Webhook Google Apps Script của Sheet sản phẩm để tự động đẩy thông tin đơn hàng 7 cột sang Google Sheet; `totalAmount` tự động tính theo giá sản phẩm trong DB * số lượng; `weight` mặc định = 3; `shippingFee`, `note`, `warehouseId` để null).*
 - **Response (201 Created):** Đối tượng `OrderDto`.
 
 ---
