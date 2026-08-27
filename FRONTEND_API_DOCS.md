@@ -103,15 +103,16 @@ export enum RoleType {
 // ==========================================
 export enum OrderStatus {
   // Giai đoạn Telesale (Số Âm & 0)
-  Draft = 0,                                // Đơn nháp / Lead mới từ Landing page
-  New = -1,                                 // Mới tạo - Chờ nhân viên gọi điện
-  NoAnswer = -2,                            // Không nghe máy
-  CallbackLater = -3,                       // Hẹn gọi lại sau
-  Cancelled = -4,                           // Khách hủy / Không mua
-  OutOfStock = -5,                          // Hết hàng
-  Duplicate = -6,                           // Trùng đơn
+  Done = 0,                                 // Đã chốt thành công
+  New = -2,                                 // Mới tạo - Chờ nhân viên gọi điện
+  NoAnswer = -3,                            // Không nghe máy
+  CallbackLater = -4,                       // Hẹn gọi lại sau
+  Cancelled = -5,                           // Khách hủy / Không mua
+  OutOfStock = -6,                          // Hết hàng
+  Duplicate = -7,                           // Trùng đơn
 
   // Giai đoạn Giao vận GHTK (Khớp 100% mã status_id của GHTK)
+  GhtkCancelled = -1,                       // Hủy đơn hàng GHTK (GHTK: -1)
   Confirmed = 1,                            // Đã chốt đơn / Chưa tiếp nhận (GHTK: 1)
   Accepted = 2,                             // Đã tiếp nhận (GHTK: 2)
   PickedOrStocked = 3,                      // Đã lấy hàng / Đã nhập kho (GHTK: 3)
@@ -137,13 +138,14 @@ export enum OrderStatus {
 
 // Helper Text Tiếng Việt
 export const OrderStatusLabels: Record<OrderStatus, string> = {
-  [OrderStatus.Draft]: 'Nháp',
+  [OrderStatus.Done]: 'Đã chốt thành công',
   [OrderStatus.New]: 'Mới tạo',
   [OrderStatus.NoAnswer]: 'Không nghe máy',
   [OrderStatus.CallbackLater]: 'Hẹn gọi lại',
-  [OrderStatus.Cancelled]: 'Hủy đơn hàng',
+  [OrderStatus.Cancelled]: 'Khách hủy / Không mua',
   [OrderStatus.OutOfStock]: 'Hết hàng',
   [OrderStatus.Duplicate]: 'Trùng đơn',
+  [OrderStatus.GhtkCancelled]: 'Hủy đơn hàng GHTK',
   [OrderStatus.Confirmed]: 'Chốt đơn (Chờ GHTK)',
   [OrderStatus.Accepted]: 'GHTK Đã tiếp nhận',
   [OrderStatus.PickedOrStocked]: 'Đã lấy hàng/Đã nhập kho',
@@ -557,7 +559,7 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
 ---
 
 #### 🔹 [POST] `/api/v1/orders/with-customer`
-- **Mô tả:** Tạo khách hàng (tự động kiểm tra theo SĐT: nếu chưa có thì tạo mới, đã có thì liên kết khách hàng cũ) và tạo đơn hàng mới với trạng thái mặc định `-1` (`OrderStatus.New` - Mới tạo). Thích hợp cho form đặt hàng Landing Page, Telesale hoặc Website.
+- **Mô tả:** Tạo khách hàng (tự động kiểm tra theo SĐT: nếu chưa có thì tạo mới, đã có thì liên kết khách hàng cũ) và tạo đơn hàng mới với trạng thái mặc định `-2` (`OrderStatus.New` - Mới tạo). Thích hợp cho form đặt hàng Landing Page, Telesale hoặc Website.
 - **Quyền hạn:** Public / Anonymous (Không bắt buộc JWT, hoặc có thể gửi kèm Bearer Token nếu có).
 - **Headers:** 
   - `Content-Type: application/json`
@@ -741,7 +743,7 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
     - `2` (`OrderStatus.Accepted` - GHTK Đã tiếp nhận)
     - `12` (`OrderStatus.Picking` - Đang lấy hàng)
   * **Hành vi xử lý:** Nếu GHTK phản hồi hủy thành công (`success: true`), hệ thống tự động:
-    - Chuyển trạng thái đơn hàng sang **`-4` (`OrderStatus.Cancelled` - Hủy đơn hàng)**.
+    - Chuyển trạng thái đơn hàng sang **`-1` (`OrderStatus.GhtkCancelled` - Hủy đơn hàng GHTK)**.
     - Thêm một bản ghi mới vào lịch sử trạng thái **`OrderStatusHistory`** (ghi nhận thời gian và log_id từ GHTK).
 - **Quyền hạn:** 👑 **Admin Only**
 - **Headers:** 

@@ -6,16 +6,17 @@ public enum OrderStatus
     // 1. TRẠNG THÁI TELESALE (Số Âm & 0)
     // ==========================================
     Done = 0,                                 // Đã chốt thành công
-    New = -1,                                 // Mới tạo - Chờ nhân viên gọi điện
-    NoAnswer = -2,                            // Không nghe máy
-    CallbackLater = -3,                       // Hẹn gọi lại sau
-    Cancelled = -4,                           // Khách hủy / Không mua
-    OutOfStock = -5,                          // Hết hàng
-    Duplicate = -6,                           // Trùng đơn
+    New = -2,                                 // Mới tạo - Chờ nhân viên gọi điện
+    NoAnswer = -3,                            // Không nghe máy
+    CallbackLater = -4,                       // Hẹn gọi lại sau
+    Cancelled = -5,                           // Khách hủy / Không mua
+    OutOfStock = -6,                          // Hết hàng
+    Duplicate = -7,                           // Trùng đơn
 
     // ==========================================
     // 2. TRẠNG THÁI GIAO VẬN GHTK (Khớp 100% mã status_id của GHTK)
     // ==========================================
+    GhtkCancelled = -1,                       // Hủy đơn hàng GHTK (GHTK: -1)
     Confirmed = 1,                            // Đã chốt đơn / Chưa tiếp nhận (GHTK: 1)
     Accepted = 2,                             // Đã tiếp nhận (GHTK: 2)
     PickedOrStocked = 3,                      // Đã lấy hàng / Đã nhập kho (GHTK: 3)
