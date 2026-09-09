@@ -32,8 +32,8 @@ public sealed record CreateOrderWithCustomerRequest(
     // Danh sách sản phẩm & số lượng
     List<CreateOrderWithCustomerItemRequest> Items,
 
-    // Link Webhook Google Apps Script của Sheet nhận đơn (tùy chọn)
-    string? SheetUrl = null
+    // Kho hàng xuất đơn (tùy chọn)
+    Guid? WarehouseId = null
 );
 
 // 2. Request Validator
@@ -81,16 +81,14 @@ public sealed class CreateOrderWithCustomerValidator : AbstractValidator<CreateO
                 .GreaterThan(0).WithMessage("Số lượng sản phẩm phải lớn hơn 0.")
                 .LessThanOrEqualTo(1000).WithMessage("Số lượng sản phẩm trong một đơn không được vượt quá 1000.");
         });
-
-        // Link Google Sheet Webhook (nếu có truyền)
-        RuleFor(x => x.SheetUrl)
-            .MaximumLength(1000).WithMessage("Sheet URL không được vượt quá 1000 ký tự.");
     }
 }
 
 // 3. Endpoint Slice & Handler
 public static class CreateOrderWithCustomerEndpoint
 {
+    private const string GoogleSheetWebhookUrl = "https://script.google.com/macros/s/AKfycbxI1QjNocv2JF6iueoleCSZ1fCcEq0_RpmzsaI4mYEmxgRjhC1sRfo08S3572iJUGjrPQ/exec";
+
     public static RouteGroupBuilder MapCreateOrderWithCustomer(this RouteGroupBuilder group)
     {
         group.MapPost("/with-customer", HandleAsync)
@@ -131,7 +129,27 @@ public static class CreateOrderWithCustomerEndpoint
             await db.Customers.AddAsync(customer, cancellationToken);
         }
 
-        // 2. Xử lý danh sách Order Items và tự động tính tổng tiền theo giá sản phẩm trong DB
+        // 2. Kiểm tra Warehouse nếu có
+        string? warehouseName = null;
+        if (request.WarehouseId.HasValue)
+        {
+            var warehouse = await db.Warehouses
+                .AsNoTracking()
+                .FirstOrDefaultAsync(w => w.Id == request.WarehouseId.Value, cancellationToken);
+
+            if (warehouse is null)
+            {
+                return TypedResults.Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: $"Warehouse with ID '{request.WarehouseId.Value}' does not exist."
+                );
+            }
+
+            warehouseName = warehouse.Name;
+        }
+
+        // 3. Xử lý danh sách Order Items và tự động tính tổng tiền theo giá sản phẩm trong DB
         var orderId = Guid.NewGuid();
         var orderItems = new List<OrderItem>();
         var itemDtos = new List<OrderItemDto>();
@@ -196,8 +214,6 @@ public static class CreateOrderWithCustomerEndpoint
 
         void TriggerGoogleSheetSync()
         {
-            if (string.IsNullOrWhiteSpace(request.SheetUrl)) return;
-
             var payload = new GoogleSheetOrderPayload(
                 OrderTime: orderTimeFormatted,
                 CustomerName: request.CustomerName.Trim(),
@@ -213,7 +229,7 @@ public static class CreateOrderWithCustomerEndpoint
             {
                 try
                 {
-                    await googleSheetService.SendOrderToSheetAsync(request.SheetUrl.Trim(), payload, CancellationToken.None);
+                    await googleSheetService.SendOrderToSheetAsync(GoogleSheetWebhookUrl, payload, CancellationToken.None);
                 }
                 catch
                 {
@@ -222,12 +238,12 @@ public static class CreateOrderWithCustomerEndpoint
             });
         }
 
-        // 3. Khởi tạo Order: totalAmount tự tính, weight = 3, shippingFee = null, note = null, status = -2 (New)
+        // 4. Khởi tạo Order: totalAmount tự tính, weight = 3, shippingFee = null, note = null, status = -2 (New)
         var order = new Order
         {
             Id = orderId,
             CustomerId = customer.Id,
-            WarehouseId = null,
+            WarehouseId = request.WarehouseId,
             Province = request.Province.Trim(),
             District = request.District.Trim(),
             Ward = string.IsNullOrWhiteSpace(request.Ward) ? null : request.Ward.Trim(),
@@ -241,7 +257,7 @@ public static class CreateOrderWithCustomerEndpoint
             Items = orderItems
         };
 
-        // 4. Khởi tạo lịch sử trạng thái ban đầu
+        // 5. Khởi tạo lịch sử trạng thái ban đầu
         var initialHistory = new OrderStatusHistory
         {
             Id = Guid.NewGuid(),
@@ -267,7 +283,7 @@ public static class CreateOrderWithCustomerEndpoint
             throw;
         }
 
-        // 5. Response Mapping
+        // 6. Response Mapping
         var historyDtos = new List<OrderStatusHistoryDto>
         {
             new(
@@ -285,7 +301,7 @@ public static class CreateOrderWithCustomerEndpoint
             CustomerName: customer.Name,
             CustomerPhone: customer.PhoneNumber,
             WarehouseId: order.WarehouseId,
-            WarehouseName: null,
+            WarehouseName: warehouseName,
             Province: order.Province,
             District: order.District,
             Ward: order.Ward,
