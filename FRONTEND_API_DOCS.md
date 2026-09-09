@@ -572,16 +572,16 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
     "district": "Quận 1",
     "ward": "Phường Bến Nghé",
     "address": "123 Đường Lê Lợi",
+    "warehouseId": "8a7b6c5d-4e3f-2a1b-0c9d-8e7f6a5b4c3d",
     "items": [
       {
         "productId": "e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b",
         "quantity": 2
       }
-    ],
-    "sheetUrl": "https://script.google.com/macros/s/.../exec"
+    ]
   }
   ```
-  *(Ghi chú: `sheetUrl` là tùy chọn (optional) - Link Webhook Google Apps Script của Sheet sản phẩm để tự động đẩy thông tin đơn hàng 7 cột sang Google Sheet; `totalAmount` tự động tính theo giá sản phẩm trong DB * số lượng; `weight` mặc định = 3; `shippingFee`, `note`, `warehouseId` để null).*
+  *(Ghi chú: `warehouseId` là tùy chọn (optional) - ID kho hàng xuất đơn; `totalAmount` tự động tính theo giá sản phẩm trong DB * số lượng; `weight` mặc định = 3; `shippingFee`, `note` để null; đơn hàng tự động đồng bộ sang Google Sheet nội bộ).*
 - **Response (201 Created):** Đối tượng `OrderDto`.
 
 ---
