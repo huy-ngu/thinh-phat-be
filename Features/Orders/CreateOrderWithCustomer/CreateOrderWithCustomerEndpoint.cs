@@ -1,4 +1,3 @@
-using System.Globalization;
 using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -8,7 +7,6 @@ using ThinhPhat.Api.Data;
 using ThinhPhat.Api.Data.Entities;
 using ThinhPhat.Api.Features.Orders.CreateOrder;
 using ThinhPhat.Api.Shared.Filters;
-using ThinhPhat.Api.Shared.Services.GoogleSheets;
 
 namespace ThinhPhat.Api.Features.Orders.CreateOrderWithCustomer;
 
@@ -87,7 +85,6 @@ public sealed class CreateOrderWithCustomerValidator : AbstractValidator<CreateO
 // 3. Endpoint Slice & Handler
 public static class CreateOrderWithCustomerEndpoint
 {
-    private const string GoogleSheetWebhookUrl = "https://script.google.com/macros/s/AKfycbxI1QjNocv2JF6iueoleCSZ1fCcEq0_RpmzsaI4mYEmxgRjhC1sRfo08S3572iJUGjrPQ/exec";
 
     public static RouteGroupBuilder MapCreateOrderWithCustomer(this RouteGroupBuilder group)
     {
@@ -107,7 +104,6 @@ public static class CreateOrderWithCustomerEndpoint
     public static async Task<IResult> HandleAsync(
         CreateOrderWithCustomerRequest request,
         AppDbContext db,
-        IGoogleSheetService googleSheetService,
         CancellationToken cancellationToken)
     {
         var normalizedPhone = request.PhoneNumber.Trim().Replace(" ", "").Replace("-", "");
@@ -200,44 +196,6 @@ public static class CreateOrderWithCustomerEndpoint
             ));
         }
 
-        // Chuẩn bị 7 cột dữ liệu để đồng bộ sang Google Sheet
-        var orderTimeFormatted = DateTime.UtcNow.AddHours(7).ToString("dd/MM/yyyy HH:mm:ss");
-        var addressParts = new[] { request.Address.Trim(), request.Ward?.Trim(), request.District.Trim(), request.Province.Trim() }
-            .Where(s => !string.IsNullOrWhiteSpace(s));
-        var fullAddress = string.Join(", ", addressParts);
-        
-        var productSummary = string.Join(", ", request.Items.Select(i =>
-        {
-            var name = products.TryGetValue(i.ProductId, out var p) ? p.Name : i.ProductId.ToString();
-            return $"{name} (SL: {i.Quantity})";
-        }));
-
-        void TriggerGoogleSheetSync()
-        {
-            var payload = new GoogleSheetOrderPayload(
-                OrderTime: orderTimeFormatted,
-                CustomerName: request.CustomerName.Trim(),
-                PhoneNumber: normalizedPhone,
-                Address: fullAddress,
-                Products: productSummary,
-                Channel: "web",
-                TotalAmount: calculatedItemsTotal.ToString("N0", new CultureInfo("vi-VN"))
-            );
-
-            // Bắn bất đồng bộ (Non-blocking) để không làm tăng độ trễ phản hồi của API
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await googleSheetService.SendOrderToSheetAsync(GoogleSheetWebhookUrl, payload, CancellationToken.None);
-                }
-                catch
-                {
-                    // Nuốt lỗi task nền để tránh unhandled task exceptions
-                }
-            });
-        }
-
         // 4. Khởi tạo Order: totalAmount tự tính, weight = 3, shippingFee = null, note = null, status = -2 (New)
         var order = new Order
         {
@@ -267,21 +225,9 @@ public static class CreateOrderWithCustomerEndpoint
             CreatedAtUtc = DateTime.UtcNow
         };
 
-        try
-        {
-            await db.Orders.AddAsync(order, cancellationToken);
-            await db.OrderStatusHistories.AddAsync(initialHistory, cancellationToken);
-            await db.SaveChangesAsync(cancellationToken);
-
-            // Gửi dữ liệu đơn sang Google Sheet khi lưu DB thành công
-            TriggerGoogleSheetSync();
-        }
-        catch (Exception)
-        {
-            // Fail-safe: Nếu Database sập / timeout, vẫn bảo toàn dữ liệu khách hàng sang Google Sheet 100%
-            TriggerGoogleSheetSync();
-            throw;
-        }
+        await db.Orders.AddAsync(order, cancellationToken);
+        await db.OrderStatusHistories.AddAsync(initialHistory, cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
 
         // 6. Response Mapping
         var historyDtos = new List<OrderStatusHistoryDto>
