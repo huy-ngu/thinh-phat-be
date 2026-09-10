@@ -21,7 +21,8 @@ Tài liệu tổng hợp danh sách **Enums / Constants** và toàn bộ **Endpo
    - [4.4 Orders - Đơn Hàng Tích Hợp (`/api/v1/orders`)](#44-orders---đơn-hàng-tích-hợp-apiv1orders)
    - [4.5 Warehouses - Kho Hàng (`/api/v1/warehouses`)](#45-warehouses---kho-hàng-apiv1warehouses)
    - [4.6 GHTK Integration (`/api/v1/ghtk`)](#46-ghtk-integration-apiv1ghtk)
-   - [4.7 System Health Check](#47-system-health-check)
+   - [4.7 Statistics (`/api/v1/statistics`)](#47-statistics-apiv1statistics)
+   - [4.8 System Health Check](#48-system-health-check)
 5. [Bảng Tổng Hợp Nhanh (Cheat Sheet)](#5-bảng-tổng-hợp-nhanh-cheat-sheet)
 
 ---
@@ -792,7 +793,128 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
 
 ---
 
-### 4.7 System Health Check & Keep-Alive
+### 4.7 Statistics - Thống Kê & Báo Cáo (`/api/v1/statistics`)
+
+#### 🔹 [GET] `/api/v1/statistics/overview`
+- **Mô tả:** Lấy dữ liệu thống kê tổng quan phục vụ toàn bộ màn hình Admin Dashboard chỉ trong 1 request duy nhất:
+  - **Summary KPIs:** Tổng doanh thu (chỉ tính đơn giao thành công `DeliveredUnreconciled` & `Reconciled`), Tổng số đơn tạo, Đơn thành công, Đang giao, Chờ xử lý, Hủy/Hoàn và Tỷ lệ thành công (%).
+  - **Revenue Chart:** Danh sách điểm dữ liệu doanh thu & số đơn theo từng ngày liên tục (quy đổi múi giờ Việt Nam UTC+7, tự động bù các ngày doanh thu = 0 để biểu đồ không bị khuyết điểm).
+  - **Top Products:** Danh sách Top 5 sản phẩm bán chạy nhất trong kỳ (kèm ảnh, tên, số lượng bán và doanh thu sản phẩm).
+  - **Status Distribution:** Cơ cấu phân bổ đơn hàng theo 4 nhóm chính (Thành công, Đang giao, Chờ xử lý, Hủy/Hoàn) kèm số lượng và tỷ lệ phần trăm (phù hợp vẽ biểu đồ tròn/donut).
+- **Quyền hạn:** 👑 **Admin Only** (Bắt buộc Header `Authorization: Bearer <Admin_AccessToken>`).
+- **Query Parameters:**
+  | Tham số | Kiểu | Bắt buộc | Mặc định | Diễn giải |
+  | :--- | :--- | :---: | :--- | :--- |
+  | `fromDate` | `string (ISO 8601)` | Không | 30 ngày trước | Thời điểm bắt đầu (VD: `2026-08-01T00:00:00Z` hoặc `2026-08-01`) |
+  | `toDate` | `string (ISO 8601)` | Không | Hiện tại | Thời điểm kết thúc (VD: `2026-08-31T23:59:59Z` hoặc `2026-08-31`) |
+- **TypeScript Interface:**
+  ```typescript
+  export interface SummaryOverviewDto {
+    totalRevenue: number;
+    totalOrders: number;
+    successfulOrders: number;
+    processingOrders: number;
+    telesaleOrders: number;
+    cancelledOrReturnedOrders: number;
+    successRate: number; // Ví dụ: 78.5 (%)
+  }
+
+  export interface RevenueChartPointDto {
+    date: string; // Định dạng YYYY-MM-DD
+    revenue: number;
+    totalOrders: number;
+    successfulOrders: number;
+  }
+
+  export interface TopProductDto {
+    productId: string;
+    productName: string;
+    productImageUrl: string;
+    quantitySold: number;
+    totalRevenue: number;
+  }
+
+  export interface OrderStatusStatDto {
+    groupKey: 'successful' | 'processing' | 'telesale' | 'cancelled_returned';
+    groupName: string; // 'Thành công' | 'Đang giao' | 'Chờ xử lý' | 'Hủy / Hoàn'
+    count: number;
+    percentage: number; // Ví dụ: 65.2 (%)
+  }
+
+  export interface GetOverviewResponse {
+    summary: SummaryOverviewDto;
+    revenueChart: RevenueChartPointDto[];
+    topProducts: TopProductDto[];
+    statusDistribution: OrderStatusStatDto[];
+  }
+  ```
+- **Response (200 OK):**
+  ```json
+  {
+    "summary": {
+      "totalRevenue": 15450000.00,
+      "totalOrders": 120,
+      "successfulOrders": 85,
+      "processingOrders": 20,
+      "telesaleOrders": 5,
+      "cancelledOrReturnedOrders": 10,
+      "successRate": 70.83
+    },
+    "revenueChart": [
+      {
+        "date": "2026-08-11",
+        "revenue": 500000.00,
+        "totalOrders": 3,
+        "successfulOrders": 2
+      },
+      {
+        "date": "2026-08-12",
+        "revenue": 0.00,
+        "totalOrders": 0,
+        "successfulOrders": 0
+      }
+    ],
+    "topProducts": [
+      {
+        "productId": "8f8b3c9e-1111-2222-3333-444455556666",
+        "productName": "Sản phẩm A",
+        "productImageUrl": "https://res.cloudinary.com/.../sp-a.jpg",
+        "quantitySold": 45,
+        "totalRevenue": 9000000.00
+      }
+    ],
+    "statusDistribution": [
+      {
+        "groupKey": "successful",
+        "groupName": "Thành công",
+        "count": 85,
+        "percentage": 70.83
+      },
+      {
+        "groupKey": "processing",
+        "groupName": "Đang giao",
+        "count": 20,
+        "percentage": 16.67
+      },
+      {
+        "groupKey": "telesale",
+        "groupName": "Chờ xử lý",
+        "count": 5,
+        "percentage": 4.17
+      },
+      {
+        "groupKey": "cancelled_returned",
+        "groupName": "Hủy / Hoàn",
+        "count": 10,
+        "percentage": 8.33
+      }
+    ]
+  }
+  ```
+
+---
+
+### 4.8 System Health Check & Keep-Alive
 
 #### 🔹 [GET] `/healthz` hoặc `/health`
 - **Mô tả:** Kiểm tra tình trạng hoạt động thực tế của Backend và kết nối Database PostgreSQL (Supabase). Phù hợp cấu hình UptimeRobot / cron-job để giữ Render không ngủ đông và giữ Supabase không bị tạm dừng sau 7 ngày.
@@ -847,4 +969,5 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
 | `/api/v1/ghtk/shipment/order` | **POST** | 👑 **Admin Only** | `application/json` | Đẩy đơn sang GHTK |
 | `/api/v1/ghtk/webhook` | **POST** | Public (Server Callback) | Form / JSON | Webhook tiếp nhận callback GHTK |
 | `/api/v1/ghtk/updateShipment` | **POST** | Public (Server Callback) | Form / JSON | Alias Webhook GHTK |
+| `/api/v1/statistics/overview` | **GET** | 👑 **Admin Only** | - | Lấy dữ liệu thống kê tổng quan cho Admin Dashboard |
 | `/healthz` | **GET** | Public | - | Kiểm tra sức khỏe hệ thống |
