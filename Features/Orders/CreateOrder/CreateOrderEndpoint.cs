@@ -18,10 +18,10 @@ public sealed record CreateOrderItemRequest(
 
 public sealed record CreateOrderRequest(
     Guid CustomerId,
-    string Province,
-    string District,
-    string? Ward,
-    string Address,
+    string? Province = null,
+    string? District = null,
+    string? Ward = null,
+    string? Address = null,
     Guid? WarehouseId = null,
     decimal? TotalAmount = null,
     decimal? ShippingFee = null,
@@ -57,10 +57,10 @@ public sealed record OrderDto(
     string CustomerPhone,
     Guid? WarehouseId,
     string? WarehouseName,
-    string Province,
-    string District,
+    string? Province,
+    string? District,
     string? Ward,
-    string Address,
+    string? Address,
     decimal TotalAmount,
     decimal? ShippingFee,
     decimal? Weight,
@@ -85,18 +85,15 @@ public sealed class CreateOrderValidator : AbstractValidator<CreateOrderRequest>
             .NotEmpty().WithMessage("CustomerId is required.");
 
         RuleFor(x => x.Province)
-            .NotEmpty().WithMessage("Province is required.")
             .MaximumLength(100).WithMessage("Province must not exceed 100 characters.");
 
         RuleFor(x => x.District)
-            .NotEmpty().WithMessage("District is required.")
             .MaximumLength(100).WithMessage("District must not exceed 100 characters.");
 
         RuleFor(x => x.Ward)
             .MaximumLength(100).WithMessage("Ward must not exceed 100 characters.");
 
         RuleFor(x => x.Address)
-            .NotEmpty().WithMessage("Delivery address is required.")
             .MaximumLength(300).WithMessage("Address must not exceed 300 characters.");
 
         RuleFor(x => x.TotalAmount)
@@ -247,10 +244,10 @@ public static class CreateOrderEndpoint
             Id = orderId,
             CustomerId = request.CustomerId,
             WarehouseId = request.WarehouseId,
-            Province = request.Province.Trim(),
-            District = request.District.Trim(),
+            Province = string.IsNullOrWhiteSpace(request.Province) ? null : request.Province.Trim(),
+            District = string.IsNullOrWhiteSpace(request.District) ? null : request.District.Trim(),
             Ward = string.IsNullOrWhiteSpace(request.Ward) ? null : request.Ward.Trim(),
-            Address = request.Address.Trim(),
+            Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim(),
             TotalAmount = finalTotalAmount,
             ShippingFee = request.ShippingFee,
             Weight = request.Weight,

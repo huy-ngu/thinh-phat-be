@@ -19,10 +19,10 @@ public sealed record UpdateOrderItemRequest(
 
 public sealed record UpdateOrderRequest(
     Guid CustomerId,
-    string Province,
-    string District,
-    string? Ward,
-    string Address,
+    string? Province = null,
+    string? District = null,
+    string? Ward = null,
+    string? Address = null,
     Guid? WarehouseId = null,
     decimal? TotalAmount = null,
     decimal? ShippingFee = null,
@@ -41,18 +41,15 @@ public sealed class UpdateOrderValidator : AbstractValidator<UpdateOrderRequest>
             .NotEmpty().WithMessage("CustomerId is required.");
 
         RuleFor(x => x.Province)
-            .NotEmpty().WithMessage("Province is required.")
             .MaximumLength(100).WithMessage("Province must not exceed 100 characters.");
 
         RuleFor(x => x.District)
-            .NotEmpty().WithMessage("District is required.")
             .MaximumLength(100).WithMessage("District must not exceed 100 characters.");
 
         RuleFor(x => x.Ward)
             .MaximumLength(100).WithMessage("Ward must not exceed 100 characters.");
 
         RuleFor(x => x.Address)
-            .NotEmpty().WithMessage("Delivery address is required.")
             .MaximumLength(300).WithMessage("Address must not exceed 300 characters.");
 
         RuleFor(x => x.TotalAmount)
@@ -271,10 +268,10 @@ public static class UpdateOrderEndpoint
         // 5. Cập nhật các trường chính
         order.CustomerId = request.CustomerId;
         order.WarehouseId = request.WarehouseId;
-        order.Province = request.Province.Trim();
-        order.District = request.District.Trim();
+        order.Province = string.IsNullOrWhiteSpace(request.Province) ? null : request.Province.Trim();
+        order.District = string.IsNullOrWhiteSpace(request.District) ? null : request.District.Trim();
         order.Ward = string.IsNullOrWhiteSpace(request.Ward) ? null : request.Ward.Trim();
-        order.Address = request.Address.Trim();
+        order.Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim();
         order.TotalAmount = finalTotalAmount;
         order.ShippingFee = request.ShippingFee;
         order.Weight = request.Weight;

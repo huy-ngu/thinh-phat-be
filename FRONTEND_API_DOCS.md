@@ -222,10 +222,10 @@ export interface OrderDto {
   customerPhone: string;
   warehouseId: string | null;
   warehouseName: string | null;
-  province: string;
-  district: string;
+  province: string | null;
+  district: string | null;
   ward: string | null;
-  address: string;
+  address: string | null;
   totalAmount: number;
   shippingFee: number | null;
   weight: number | null;

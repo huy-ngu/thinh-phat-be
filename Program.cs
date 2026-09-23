@@ -263,7 +263,6 @@ var healthHandler = async (
     // Xử lý riêng cho method HEAD (UptimeRobot mặc định dùng HTTP HEAD để tiết kiệm băng thông)
     if (HttpMethods.IsHead(context.Request.Method) || HttpMethods.IsOptions(context.Request.Method))
     {
-        logger.LogInformation("[HealthCheck {Method}] Ping từ IP: {ClientIp}", context.Request.Method, clientIp);
         return Results.Ok();
     }
 
@@ -285,17 +284,14 @@ var healthHandler = async (
     {
         dbConnected = false;
         dbMessage = $"Database check error: {ex.Message}";
+        logger.LogError(ex, "[HealthCheck {Method}] Ngoại lệ khi kiểm tra database từ IP: {ClientIp}", context.Request.Method, clientIp);
     }
     finally
     {
         sw.Stop();
     }
 
-    if (dbConnected)
-    {
-        logger.LogInformation("[HealthCheck {Method}] Ping từ IP: {ClientIp} | DB: OK ({Elapsed:F2}ms)", context.Request.Method, clientIp, sw.Elapsed.TotalMilliseconds);
-    }
-    else
+    if (!dbConnected)
     {
         logger.LogWarning("[HealthCheck {Method}] Ping từ IP: {ClientIp} | DB LỖI: {DbMessage} ({Elapsed:F2}ms)", context.Request.Method, clientIp, dbMessage, sw.Elapsed.TotalMilliseconds);
     }

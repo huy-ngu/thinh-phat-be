@@ -9,10 +9,10 @@ public sealed class Order
     // ==========================================
     // Cấu trúc địa chỉ giao hàng chuẩn hóa
     // ==========================================
-    public string Province { get; set; } = string.Empty;
-    public string District { get; set; } = string.Empty;
+    public string? Province { get; set; }
+    public string? District { get; set; }
     public string? Ward { get; set; }
-    public string Address { get; set; } = string.Empty;
+    public string? Address { get; set; }
 
     public decimal TotalAmount { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.New;
