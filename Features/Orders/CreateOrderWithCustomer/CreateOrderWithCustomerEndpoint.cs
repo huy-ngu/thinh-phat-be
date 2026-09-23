@@ -22,10 +22,10 @@ public sealed record CreateOrderWithCustomerRequest(
     string PhoneNumber,
 
     // Cấu trúc địa chỉ giao hàng (địa chỉ cụ thể và địa lí)
-    string Province,
-    string District,
+    string? Province,
+    string? District,
     string? Ward,
-    string Address,
+    string? Address,
 
     // Danh sách sản phẩm & số lượng
     List<CreateOrderWithCustomerItemRequest> Items,
@@ -51,18 +51,15 @@ public sealed class CreateOrderWithCustomerValidator : AbstractValidator<CreateO
 
         // Địa chỉ giao hàng
         RuleFor(x => x.Province)
-            .NotEmpty().WithMessage("Tỉnh/Thành phố là bắt buộc.")
             .MaximumLength(100).WithMessage("Tỉnh/Thành phố không được vượt quá 100 ký tự.");
 
         RuleFor(x => x.District)
-            .NotEmpty().WithMessage("Quận/Huyện là bắt buộc.")
             .MaximumLength(100).WithMessage("Quận/Huyện không được vượt quá 100 ký tự.");
 
         RuleFor(x => x.Ward)
             .MaximumLength(100).WithMessage("Phường/Xã không được vượt quá 100 ký tự.");
 
         RuleFor(x => x.Address)
-            .NotEmpty().WithMessage("Địa chỉ cụ thể là bắt buộc.")
             .MaximumLength(300).WithMessage("Địa chỉ cụ thể không được vượt quá 300 ký tự.");
 
         // Danh sách sản phẩm
@@ -202,10 +199,10 @@ public static class CreateOrderWithCustomerEndpoint
             Id = orderId,
             CustomerId = customer.Id,
             WarehouseId = request.WarehouseId,
-            Province = request.Province.Trim(),
-            District = request.District.Trim(),
+            Province = string.IsNullOrWhiteSpace(request.Province) ? null : request.Province.Trim(),
+            District = string.IsNullOrWhiteSpace(request.District) ? null : request.District.Trim(),
             Ward = string.IsNullOrWhiteSpace(request.Ward) ? null : request.Ward.Trim(),
-            Address = request.Address.Trim(),
+            Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim(),
             TotalAmount = calculatedItemsTotal,
             ShippingFee = null,
             Weight = 3m,

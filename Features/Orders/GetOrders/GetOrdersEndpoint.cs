@@ -100,9 +100,9 @@ public static class GetOrdersEndpoint
         {
             var keyword = search.Trim().ToLower();
             query = query.Where(o =>
-                o.Address.ToLower().Contains(keyword) ||
-                o.Province.ToLower().Contains(keyword) ||
-                o.District.ToLower().Contains(keyword) ||
+                (o.Address != null && o.Address.ToLower().Contains(keyword)) ||
+                (o.Province != null && o.Province.ToLower().Contains(keyword)) ||
+                (o.District != null && o.District.ToLower().Contains(keyword)) ||
                 (o.Ward != null && o.Ward.ToLower().Contains(keyword)) ||
                 (o.Note != null && o.Note.ToLower().Contains(keyword)) ||
                 (o.GhtkId != null && o.GhtkId.ToLower().Contains(keyword)) ||

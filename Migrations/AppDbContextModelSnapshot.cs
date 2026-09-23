@@ -61,7 +61,6 @@ namespace ThinhPhat.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Address")
-                        .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
@@ -74,11 +73,8 @@ namespace ThinhPhat.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("District")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasDefaultValue("");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("EstimatedDeliverTime")
                         .HasMaxLength(100)
@@ -97,11 +93,8 @@ namespace ThinhPhat.Api.Migrations
                         .HasColumnType("character varying(500)");
 
                     b.Property<string>("Province")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasDefaultValue("");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<decimal?>("ShippingFee")
                         .HasPrecision(18, 2)

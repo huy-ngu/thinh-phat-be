@@ -126,10 +126,10 @@ public sealed class AppDbContext : DbContext
         {
             entity.ToTable("orders");
             entity.HasKey(o => o.Id);
-            entity.Property(o => o.Province).HasMaxLength(100).IsRequired().HasDefaultValue(string.Empty);
-            entity.Property(o => o.District).HasMaxLength(100).IsRequired().HasDefaultValue(string.Empty);
+            entity.Property(o => o.Province).HasMaxLength(100);
+            entity.Property(o => o.District).HasMaxLength(100);
             entity.Property(o => o.Ward).HasMaxLength(100);
-            entity.Property(o => o.Address).HasMaxLength(300).IsRequired();
+            entity.Property(o => o.Address).HasMaxLength(300);
             entity.Property(o => o.TotalAmount).HasPrecision(18, 2).IsRequired();
             entity.Property(o => o.ShippingFee).HasPrecision(18, 2);
             entity.Property(o => o.Weight).HasPrecision(10, 2);

@@ -94,10 +94,10 @@ erDiagram
         uuid id PK
         uuid customer_id FK
         uuid warehouse_id FK "Nullable"
-        string province "Max 100"
-        string district "Max 100"
+        string province "Max 100, Nullable"
+        string district "Max 100, Nullable"
         string ward "Max 100, Nullable"
-        string address "Max 300"
+        string address "Max 300, Nullable"
         decimal total_amount "18,2"
         decimal shipping_fee "18,2, Nullable"
         decimal weight "10,2, Nullable"
@@ -208,10 +208,10 @@ Bảng quản lý tập trung toàn bộ vòng đời đơn hàng: từ lúc kh�
 | `id` | `uuid` | `PK`, `NOT NULL` | Mã định danh đơn hàng (Dùng làm `partner_id` gửi GHTK) |
 | `customer_id` | `uuid` | `FK (customers.id)`, `NOT NULL` | Khách hàng nhận đơn |
 | `warehouse_id` | `uuid` | `FK (warehouses.id)`, `NULL` | Kho xuất hàng (gán khi chốt đơn gửi GHTK) |
-| `province` | `varchar(100)`| `NOT NULL`, Default: `''` | Tỉnh / Thành phố người nhận |
-| `district` | `varchar(100)`| `NOT NULL`, Default: `''` | Quận / Huyện người nhận |
+| `province` | `varchar(100)`| `NULL` | Tỉnh / Thành phố người nhận |
+| `district` | `varchar(100)`| `NULL` | Quận / Huyện người nhận |
 | `ward` | `varchar(100)`| `NULL` | Phường / Xã người nhận |
-| `address` | `varchar(300)`| `NOT NULL` | Địa chỉ nhận hàng chi tiết (Số nhà, tên đường) |
+| `address` | `varchar(300)`| `NULL` | Địa chỉ nhận hàng chi tiết (Số nhà, tên đường) |
 | `total_amount` | `numeric(18,2)`| `NOT NULL` | Tổng số tiền đơn hàng (Tiền hàng + Phí ship) |
 | `shipping_fee` | `numeric(18,2)`| `NULL` | Phí vận chuyển GHTK (Gán khi chốt đơn / Đẩy GHTK) |
 | `weight` | `numeric(10,2)`| `NULL` | Khối lượng gói hàng (kg / gram) |
