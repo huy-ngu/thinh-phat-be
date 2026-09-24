@@ -483,6 +483,7 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
         "status": 4,
         "statusName": "Đang giao hàng",
         "note": "Cho khách kiểm tra hàng",
+        "sheetNote": "Khách dặn giao buổi tối",
         "ghtkId": "S21234567.BO.MB1.123456789",
         "estimatedPickTime": "Chiều 2026-08-23",
         "estimatedDeliverTime": "Sáng 2026-08-24",
@@ -918,6 +919,8 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
 
 #### 🔹 [POST] `/api/v1/sync/google-sheet`
 - **Mô tả:** Tiếp nhận Webhook từ Google Apps Script để tự động tạo đơn hàng mới khi có dòng phát sinh trên Google Sheet.
+  * **Tự động bóc tách giá tiền từ Cột E (`sheetNote`):** Backend tự động nhận diện và trích xuất số tiền trong chuỗi text (ví dụ: `"Mua 1 MÁY THÁI RAU CỦ GIÁ: 1.750.000đ (Miễn phí vận chuyển)"` -> tính tổng tiền đơn = `1.750.000đ`, `"giá: 2.100.000đ"` -> `2.100.000đ`, `"Giá: 500k"` -> `500.000đ`).
+  * **Fallback linh hoạt:** Nếu Cột E để trống hoặc không chứa thông tin giá, hệ thống sẽ tự động fallback tính tiền theo giá niêm yết của sản phẩm trong Database (`product.Price * quantity`).
 - **Quyền hạn:** Bảo mật qua Header `X-Sync-Key` hoặc `X-Api-Key` (khóa cấu hình trong backend).
 - **Headers:**
   - `X-Sync-Key: thinhphat_gsheet_sync_secret_key_2026`
@@ -929,6 +932,7 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
     "customerName": "Nguyễn Văn A",
     "phoneNumber": "0912345678",
     "address": "123 Đường Lê Lợi, Phường Bến Nghé, Quận 1",
+    "sheetNote": "Mua 1 MÁY THÁI RAU CỦ GIÁ: 1.750.000đ (Miễn phí vận chuyển)",
     "createdAt": "2026-09-20T13:11:26Z",
     "quantity": 1
   }
@@ -943,7 +947,7 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
     "customerName": "Nguyễn Văn A",
     "phoneNumber": "0912345678",
     "productName": "Sản phẩm A",
-    "totalAmount": 250000.0,
+    "totalAmount": 1750000.0,
     "createdAtUtc": "2026-09-20T13:11:26Z"
   }
   ```

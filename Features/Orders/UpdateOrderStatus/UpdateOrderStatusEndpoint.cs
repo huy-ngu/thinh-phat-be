@@ -115,6 +115,7 @@ public static class UpdateOrderStatusEndpoint
             Status: refreshedOrder.Status,
             StatusName: CreateOrderEndpoint.GetStatusDisplayName(refreshedOrder.Status),
             Note: refreshedOrder.Note,
+            SheetNote: refreshedOrder.SheetNote,
             GhtkId: refreshedOrder.GhtkId,
             EstimatedPickTime: refreshedOrder.EstimatedPickTime,
             EstimatedDeliverTime: refreshedOrder.EstimatedDeliverTime,

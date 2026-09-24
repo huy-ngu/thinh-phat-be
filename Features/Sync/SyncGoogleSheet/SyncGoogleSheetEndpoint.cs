@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -21,7 +21,8 @@ public sealed record SyncGoogleSheetRequest(
     DateTime? CreatedAt = null,
     int Quantity = 1,
     Guid? WarehouseId = null,
-    string? Note = null
+    string? Note = null,
+    string? SheetNote = null
 );
 
 public sealed record SyncGoogleSheetResponse(
@@ -61,6 +62,9 @@ public sealed class SyncGoogleSheetValidator : AbstractValidator<SyncGoogleSheet
 
         RuleFor(x => x.Note)
             .MaximumLength(500).WithMessage("Ghi chú không được vượt quá 500 ký tự.");
+
+        RuleFor(x => x.SheetNote)
+            .MaximumLength(1000).WithMessage("Ghi chú Sheet không được vượt quá 1000 ký tự.");
     }
 }
 
@@ -112,13 +116,17 @@ public static class SyncGoogleSheetEndpoint
 
         // 2. Chuẩn hóa số điện thoại
         var cleanPhone = Regex.Replace(request.PhoneNumber.Trim(), @"[^\d+]", "");
-        if (cleanPhone.StartsWith("84") && !cleanPhone.StartsWith("+84"))
+        if (cleanPhone.StartsWith("84") && !cleanPhone.StartsWith("+84") && cleanPhone.Length > 9)
         {
             cleanPhone = "0" + cleanPhone[2..];
         }
         else if (cleanPhone.StartsWith("+84"))
         {
             cleanPhone = "0" + cleanPhone[3..];
+        }
+        else if (cleanPhone.Length > 0 && !cleanPhone.StartsWith("0"))
+        {
+            cleanPhone = "0" + cleanPhone;
         }
 
         // Tên khách hàng: nếu trống hoặc không có thì lưu mặc định là "a"
@@ -196,7 +204,23 @@ public static class SyncGoogleSheetEndpoint
 
         // 6. Tính toán tiền và khởi tạo đơn hàng
         var quantity = request.Quantity > 0 ? request.Quantity : 1;
-        var totalAmount = product.Price * quantity;
+        
+        // Tự động bóc tách giá tiền từ Cột E (SheetNote) nếu có (ví dụ: "GIÁ: 1.750.000đ", "giá: 2.100.000đ")
+        var extractedPrice = TryExtractPriceFromSheetNote(request.SheetNote);
+        decimal totalAmount;
+        decimal unitPrice;
+
+        if (extractedPrice.HasValue && extractedPrice.Value > 0)
+        {
+            totalAmount = extractedPrice.Value;
+            unitPrice = totalAmount / quantity;
+        }
+        else
+        {
+            unitPrice = product.Price;
+            totalAmount = unitPrice * quantity;
+        }
+
         var orderId = Guid.NewGuid();
 
         var orderItem = new OrderItem
@@ -205,7 +229,7 @@ public static class SyncGoogleSheetEndpoint
             OrderId = orderId,
             ProductId = product.Id,
             Quantity = quantity,
-            UnitPrice = product.Price,
+            UnitPrice = unitPrice,
             TotalPrice = totalAmount
         };
 
@@ -243,6 +267,7 @@ public static class SyncGoogleSheetEndpoint
             Weight = 3m,
             Status = OrderStatus.New, // -2 Mới tạo
             Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
+            SheetNote = string.IsNullOrWhiteSpace(request.SheetNote) ? null : request.SheetNote.Trim(),
             CreatedAtUtc = orderCreatedAt,
             Items = [orderItem]
         };
@@ -276,5 +301,69 @@ public static class SyncGoogleSheetEndpoint
         );
 
         return TypedResults.Created($"/api/v1/orders/{order.Id}", response);
+    }
+
+    /// <summary>
+    /// Bóc tách số tiền từ nội dung text cột E (SheetNote).
+    /// Hỗ trợ các định dạng:
+    /// - "Mua 1 MÁY THÁI RAU CỦ GIÁ: 1.750.000đ (Miễn phí vận chuyển)" -> 1750000
+    /// - "Mua 1 Máy cưa xích + sào nối 2m7 + 1 Pin 20cell giá: 2.100.000đ" -> 2100000
+    /// - "Giá: 500k", "Giá: 1,500,000 VND", "1.750.000đ"
+    /// </summary>
+    public static decimal? TryExtractPriceFromSheetNote(string? sheetNote)
+    {
+        if (string.IsNullOrWhiteSpace(sheetNote))
+        {
+            return null;
+        }
+
+        // 1. Tìm mẫu ưu tiên: "giá", "gia", "price" theo sau bởi dấu hai chấm / khoảng trắng và dãy số
+        var match = Regex.Match(
+            sheetNote,
+            @"(?:gi[áa]|price)\s*[:=\-]?\s*([\d\.,]+(?:\s*[kK])?)",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
+        );
+
+        // 2. Fallback nếu không có từ khóa "giá" nhưng có mẫu số tiền rõ ràng kèm "đ", "vnđ", "vnd"
+        if (!match.Success)
+        {
+            match = Regex.Match(
+                sheetNote,
+                @"(?:^|\s)([\d\.,]{4,}(?:\s*[kK])?)\s*(?:đ|vnđ|vnd)\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
+            );
+        }
+
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        var rawValue = match.Groups[1].Value.Trim();
+
+        // Xử lý hậu tố 'k' hoặc 'K' (ví dụ: 500k -> 500.000)
+        var isThousandMultiplier = false;
+        if (rawValue.EndsWith("k", StringComparison.OrdinalIgnoreCase))
+        {
+            isThousandMultiplier = true;
+            rawValue = rawValue[..^1].Trim();
+        }
+
+        // Loại bỏ các ký tự không phải số (dấu chấm, phẩy ngăn cách hàng nghìn)
+        var cleanDigits = Regex.Replace(rawValue, @"[^\d]", "");
+        if (decimal.TryParse(cleanDigits, out var parsedNumber))
+        {
+            if (isThousandMultiplier)
+            {
+                parsedNumber *= 1000m;
+            }
+
+            if (parsedNumber > 0)
+            {
+                return parsedNumber;
+            }
+        }
+
+        return null;
     }
 }

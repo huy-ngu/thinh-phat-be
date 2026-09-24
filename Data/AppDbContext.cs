@@ -138,6 +138,7 @@ public sealed class AppDbContext : DbContext
             entity.Property(o => o.EstimatedDeliverTime).HasMaxLength(100);
             entity.Property(o => o.Status).HasConversion<string>().HasMaxLength(50).IsRequired();
             entity.Property(o => o.Note).HasMaxLength(500);
+            entity.Property(o => o.SheetNote).HasMaxLength(1000);
             entity.Property(o => o.CreatedAtUtc).HasDefaultValueSql("timezone('utc', now())");
 
             // Indexes

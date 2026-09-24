@@ -105,6 +105,7 @@ public static class GetOrdersEndpoint
                 (o.District != null && o.District.ToLower().Contains(keyword)) ||
                 (o.Ward != null && o.Ward.ToLower().Contains(keyword)) ||
                 (o.Note != null && o.Note.ToLower().Contains(keyword)) ||
+                (o.SheetNote != null && o.SheetNote.ToLower().Contains(keyword)) ||
                 (o.GhtkId != null && o.GhtkId.ToLower().Contains(keyword)) ||
                 (o.Customer != null && (o.Customer.Name.ToLower().Contains(keyword) || o.Customer.PhoneNumber.Contains(keyword))) ||
                 o.Items.Any(i => i.Product != null && i.Product.Name.ToLower().Contains(keyword)));
@@ -135,6 +136,7 @@ public static class GetOrdersEndpoint
             Status: o.Status,
             StatusName: CreateOrderEndpoint.GetStatusDisplayName(o.Status),
             Note: o.Note,
+            SheetNote: o.SheetNote,
             GhtkId: o.GhtkId,
             EstimatedPickTime: o.EstimatedPickTime,
             EstimatedDeliverTime: o.EstimatedDeliverTime,
