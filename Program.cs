@@ -20,6 +20,7 @@ using ThinhPhat.Api.Features.Orders;
 using ThinhPhat.Api.Features.Products;
 using ThinhPhat.Api.Features.Warehouses;
 using ThinhPhat.Api.Features.Statistics;
+using ThinhPhat.Api.Features.Sync;
 using ThinhPhat.Api.Shared.Constants;
 using ThinhPhat.Api.Shared.Errors;
 using ThinhPhat.Api.Shared.Security;
@@ -332,6 +333,7 @@ app.MapOrderEndpoints();
 app.MapWarehouseEndpoints();
 app.MapGhtkEndpoints();
 app.MapStatisticsEndpoints();
+app.MapSyncEndpoints();
 
 app.Run();
 

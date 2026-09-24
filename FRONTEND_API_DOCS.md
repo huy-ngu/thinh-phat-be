@@ -914,7 +914,43 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
 
 ---
 
-### 4.8 System Health Check & Keep-Alive
+### 4.8 Data Sync - Đồng Bộ Dữ Liệu (`/api/v1/sync`)
+
+#### 🔹 [POST] `/api/v1/sync/google-sheet`
+- **Mô tả:** Tiếp nhận Webhook từ Google Apps Script để tự động tạo đơn hàng mới khi có dòng phát sinh trên Google Sheet.
+- **Quyền hạn:** Bảo mật qua Header `X-Sync-Key` hoặc `X-Api-Key` (khóa cấu hình trong backend).
+- **Headers:**
+  - `X-Sync-Key: thinhphat_gsheet_sync_secret_key_2026`
+  - `Content-Type: application/json`
+- **Payload:**
+  ```json
+  {
+    "productId": "e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b",
+    "customerName": "Nguyễn Văn A",
+    "phoneNumber": "0912345678",
+    "address": "123 Đường Lê Lợi, Phường Bến Nghé, Quận 1",
+    "createdAt": "2026-09-20T13:11:26Z",
+    "quantity": 1
+  }
+  ```
+- **Response (201 Created):**
+  ```json
+  {
+    "success": true,
+    "message": "Đồng bộ đơn hàng từ Google Sheet thành công.",
+    "orderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "customerId": "c1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c",
+    "customerName": "Nguyễn Văn A",
+    "phoneNumber": "0912345678",
+    "productName": "Sản phẩm A",
+    "totalAmount": 250000.0,
+    "createdAtUtc": "2026-09-20T13:11:26Z"
+  }
+  ```
+
+---
+
+### 4.9 System Health Check & Keep-Alive
 
 #### 🔹 [GET] `/healthz` hoặc `/health`
 - **Mô tả:** Kiểm tra tình trạng hoạt động thực tế của Backend và kết nối Database PostgreSQL (Supabase). Phù hợp cấu hình UptimeRobot / cron-job để giữ Render không ngủ đông và giữ Supabase không bị tạm dừng sau 7 ngày.
@@ -940,6 +976,7 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
 
 | Endpoint | Method | Auth Scope | Content-Type | Thao tác |
 | :--- | :--- | :--- | :--- | :--- |
+| `/api/v1/sync/google-sheet` | **POST** | Webhook Key (`X-Sync-Key`) | `application/json` | Đồng bộ đơn hàng từ Google Sheet |
 | `/api/v1/auth/login` | **POST** | Public | `application/json` | Đăng nhập tài khoản |
 | `/api/v1/auth/register` | **POST** | Public | `application/json` | Đăng ký tài khoản mới |
 | `/api/v1/auth/refresh` | **POST** | Public | `application/json` | Làm mới Access Token |
