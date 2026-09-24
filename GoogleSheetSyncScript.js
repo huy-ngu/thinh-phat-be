@@ -1,14 +1,14 @@
-/**
+﻿/**
  * =========================================================================================
- * GOOGLE APPS SCRIPT: ĐỒNG BỘ ĐƠN HÀNG TỪ GOOGLE SHEET VỀ BACKEND THINH PHAT API
+ * GOOGLE APPS SCRIPT: ĐỒNG BỘ ĐƠN HÀNG TỪ GOOGLE SHEET VỀ BACKEND THỊNH PHÁT API
  * =========================================================================================
  *
  * HƯỚNG DẪN CÀI ĐẶT TRÊN GOOGLE SHEET:
  * 1. Mở Google Sheet của Sản Phẩm cần đồng bộ.
  * 2. Trên thanh menu, chọn: Tiện ích mở rộng (Extensions) -> Apps Script.
  * 3. Xóa hết code mặc định trong trình chỉnh sửa và dán toàn bộ nội dung file này vào.
- * 4. Điền các giá trị trong khối `CONFIG` bên dưới (đặc biệt là API_URL, API_KEY và PRODUCT_ID).
- * 5. BẤM LƯU (Ctrl + S hoặc biểu tượng Đĩa mềm).
+ * 4. Điền các giá trị trong khối `CONFIG` bên dưới (đặc biệt là API_URL, API_KEY, PRODUCT_ID, WAREHOUSE_ID).
+ * 5. BẤM LƯU (Ctrl + S hoặc biểu tượng đĩa mềm).
  * 6. (CẤP QUYỀN URLFETCHAPP - BẮT BUỘC):
  *    - Chọn hàm `testConnection` trên thanh công cụ -> Bấm "Chạy" (Run) 1 lần.
  *    - Khi Google hiện popup yêu cầu cấp quyền: Bấm "Xem lại quyền" -> Chọn tài khoản Google
@@ -27,7 +27,7 @@
 // ==========================================
 var CONFIG = {
   // URL API Backend nhận webhook đồng bộ (Thay bằng domain thật của bạn khi deploy production)
-  API_URL: "https://thinh-phat-fe.vercel.app/api/v1/sync/google-sheet",
+  API_URL: "https://thinh-phat-be.onrender.com/api/v1/sync/google-sheet",
 
   // Khóa bảo mật kết nối (phải trùng khớp với Sync:GoogleSheetApiKey trong appsettings.json)
   API_KEY: "thinhphat_gsheet_sync_secret_key_2026",
@@ -35,9 +35,11 @@ var CONFIG = {
   // GUID của Sản phẩm trong Database tương ứng với Google Sheet này
   PRODUCT_ID: "c4ca59c5-d264-480f-8cbf-fb770810db2c",
 
-  // Vị trí cột trạng thái đồng bộ (Mặc định: Cột E = Cột 5)
-  // Cột 1: Thời gian tạo | Cột 2: Tên KH | Cột 3: SĐT | Cột 4: Địa chỉ | Cột 5: Trạng thái Sync
-  SYNC_STATUS_COL: 5,
+  // GUID của Kho hàng mặc định cho tất cả đơn hàng từ Google Sheet này
+  WAREHOUSE_ID: "d396b002-4f56-497d-b56a-ebf2e71c05e5",
+
+  // Vị trí cột trạng thái đồng bộ (Mặc định: Cột Q = Cột 17)
+  SYNC_STATUS_COL: 17,
 
   // Dòng bắt đầu chứa dữ liệu (Bỏ qua dòng 1 là tiêu đề)
   START_ROW: 2,
@@ -50,15 +52,15 @@ var CONFIG = {
 // 2. HÀM KIỂM TRA KẾT NỐI & CẤP QUYỀN (CHẠY ĐẦU TIÊN)
 // ==========================================
 function testConnection() {
-  Logger.log("Đang kiểm tra kết nối và kích hoạt cấp quyền...");
-
   try {
     var testPayload = {
       productId: CONFIG.PRODUCT_ID,
-      phoneNumber: "0999999999",
+      warehouseId: CONFIG.WAREHOUSE_ID,
       customerName: "Test Connection",
-      address: "Test Address",
+      phoneNumber: "0999999999",
+      address: "Địa chỉ test kết nối",
       quantity: 1,
+      note: "Đơn test kết nối từ Google Apps Script",
     };
 
     var options = {
@@ -90,7 +92,7 @@ function testConnection() {
           code +
           "\nChi tiết: " +
           content +
-          "\nVui lòng kiểm tra lại API_URL, API_KEY và PRODUCT_ID trong CONFIG.",
+          "\nVui lòng kiểm tra lại API_URL, API_KEY, PRODUCT_ID và WAREHOUSE_ID trong CONFIG.",
       );
     }
   } catch (err) {
@@ -115,16 +117,7 @@ function syncNewRows() {
     return;
   }
 
-  // Đảm bảo có tiêu đề cột trạng thái ở ô E1
-  var headerCell = sheet.getRange(1, CONFIG.SYNC_STATUS_COL);
-  if (!headerCell.getValue()) {
-    headerCell
-      .setValue("Sync_Status")
-      .setFontWeight("bold")
-      .setBackground("#d9ead3");
-  }
-
-  // Đọc toàn bộ dữ liệu từ dòng START_ROW đến lastRow (lấy 5 cột A -> E)
+  // Đọc toàn bộ dữ liệu từ dòng START_ROW đến lastRow (lấy từ cột A -> Q)
   var numRows = lastRow - CONFIG.START_ROW + 1;
   var dataRange = sheet.getRange(
     CONFIG.START_ROW,
@@ -173,9 +166,10 @@ function syncNewRows() {
         }
       }
 
-      // Chuẩn bị payload gửi sang API Backend
+      // Chuẩn bị payload gửi sang API Backend (kèm warehouseId mặc định)
       var payload = {
         productId: CONFIG.PRODUCT_ID,
+        warehouseId: CONFIG.WAREHOUSE_ID,
         customerName: customerName ? customerName : null,
         phoneNumber: phoneNumber,
         address: address ? address : null,
@@ -238,7 +232,7 @@ function syncNewRows() {
 }
 
 // ==========================================
-// 3. HÀM ĐÁNH DẤU BỎ QUA DỮ LIỆU CŨ (Chạy 1 lần)
+// 4. HÀM ĐÁNH DẤU BỎ QUA DỮ LIỆU CŨ (Chạy 1 lần)
 // ==========================================
 function markAllExistingRowsAsSkipped() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
@@ -250,13 +244,6 @@ function markAllExistingRowsAsSkipped() {
     );
     return;
   }
-
-  // Tạo tiêu đề nếu chưa có
-  sheet
-    .getRange(1, CONFIG.SYNC_STATUS_COL)
-    .setValue("Sync_Status")
-    .setFontWeight("bold")
-    .setBackground("#d9ead3");
 
   var numRows = lastRow - CONFIG.START_ROW + 1;
   var statusRange = sheet.getRange(
@@ -290,7 +277,7 @@ function markAllExistingRowsAsSkipped() {
 }
 
 // ==========================================
-// 4. HÀM THIẾT LẬP TRIGGER TỰ ĐỘNG
+// 5. HÀM THIẾT LẬP TRIGGER TỰ ĐỘNG
 // ==========================================
 function setupTriggers() {
   // Xóa các trigger cũ của hàm syncNewRows để tránh trùng lặp
