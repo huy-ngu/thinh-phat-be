@@ -64,6 +64,7 @@ public static class GetOrderByIdEndpoint
             Status: order.Status,
             StatusName: CreateOrderEndpoint.GetStatusDisplayName(order.Status),
             Note: order.Note,
+            SheetNote: order.SheetNote,
             GhtkId: order.GhtkId,
             EstimatedPickTime: order.EstimatedPickTime,
             EstimatedDeliverTime: order.EstimatedDeliverTime,

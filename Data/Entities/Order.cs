@@ -17,6 +17,7 @@ public sealed class Order
     public decimal TotalAmount { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.New;
     public string? Note { get; set; }
+    public string? SheetNote { get; set; }
 
     // ==========================================
     // Thông tin giao hàng & GHTK

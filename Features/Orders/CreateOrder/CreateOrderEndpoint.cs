@@ -28,6 +28,7 @@ public sealed record CreateOrderRequest(
     decimal? Weight = null,
     OrderStatus Status = OrderStatus.New,
     string? Note = null,
+    string? SheetNote = null,
     List<CreateOrderItemRequest>? Items = null
 );
 
@@ -67,6 +68,7 @@ public sealed record OrderDto(
     OrderStatus Status,
     string StatusName,
     string? Note,
+    string? SheetNote,
     string? GhtkId,
     string? EstimatedPickTime,
     string? EstimatedDeliverTime,
@@ -110,6 +112,9 @@ public sealed class CreateOrderValidator : AbstractValidator<CreateOrderRequest>
 
         RuleFor(x => x.Note)
             .MaximumLength(500).WithMessage("Note must not exceed 500 characters.");
+
+        RuleFor(x => x.SheetNote)
+            .MaximumLength(1000).WithMessage("Sheet note must not exceed 1000 characters.");
 
         When(x => x.Items != null && x.Items.Count > 0, () =>
         {
@@ -253,6 +258,7 @@ public static class CreateOrderEndpoint
             Weight = request.Weight,
             Status = request.Status,
             Note = request.Note?.Trim(),
+            SheetNote = request.SheetNote?.Trim(),
             CreatedAtUtc = DateTime.UtcNow,
             Items = orderItems
         };
@@ -300,6 +306,7 @@ public static class CreateOrderEndpoint
             Status: order.Status,
             StatusName: GetStatusDisplayName(order.Status),
             Note: order.Note,
+            SheetNote: order.SheetNote,
             GhtkId: order.GhtkId,
             EstimatedPickTime: order.EstimatedPickTime,
             EstimatedDeliverTime: order.EstimatedDeliverTime,

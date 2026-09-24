@@ -1,4 +1,4 @@
-﻿/**
+/**
  * =========================================================================================
  * GOOGLE APPS SCRIPT: ĐỒNG BỘ ĐƠN HÀNG TỪ GOOGLE SHEET VỀ BACKEND THỊNH PHÁT API
  * =========================================================================================
@@ -59,6 +59,7 @@ function testConnection() {
       customerName: "Test Connection",
       phoneNumber: "0999999999",
       address: "Địa chỉ test kết nối",
+      sheetNote: "Ghi chú test cột E",
       quantity: 1,
       note: "Đơn test kết nối từ Google Apps Script",
     };
@@ -136,13 +137,32 @@ function syncNewRows() {
 
     // Chỉ xử lý các dòng mà Cột Sync_Status đang trống
     if (syncStatus === "") {
-      var rawCreatedAt = row[0]; // Cột 1: Thời gian
-      var customerName = String(row[1] || "").trim(); // Cột 2: Tên
-      var phoneNumber = String(row[2] || "").trim(); // Cột 3: SĐT
-      var address = String(row[3] || "").trim(); // Cột 4: Địa chỉ
+      var rawCreatedAt = row[0]; // Cột 1 (A): Thời gian
+      var customerName = String(row[1] || "").trim(); // Cột 2 (B): Tên
+      var rawPhone = String(row[2] || "").trim(); // Cột 3 (C): SĐT
+      var address = String(row[3] || "").trim(); // Cột 4 (D): Địa chỉ
+      var sheetNote = String(row[4] || "").trim(); // Cột 5 (E): Ghi chú từ Sheet
 
-      // Chỉ bắt buộc có Số điện thoại (Tên nếu trống backend tự gán "a", Địa chỉ nếu trống để null)
-      if (!phoneNumber) {
+      // Bỏ qua nếu dòng này không có SĐT
+      if (!rawPhone) {
+        continue;
+      }
+
+      // Chuẩn hóa số điện thoại: loại bỏ khoảng trắng, dấu chấm, ký tự không phải số
+      var cleanPhone = rawPhone.replace(/[^\d+]/g, "");
+
+      // Nếu bắt đầu bằng +84 hoặc 84 -> đổi thành 0
+      if (cleanPhone.startsWith("+84")) {
+        cleanPhone = "0" + cleanPhone.substring(3);
+      } else if (cleanPhone.startsWith("84") && cleanPhone.length > 9) {
+        cleanPhone = "0" + cleanPhone.substring(2);
+      } else if (cleanPhone && !cleanPhone.startsWith("0")) {
+        // Tự động thêm số 0 vào đầu nếu chưa có (ví dụ Google Sheet tự bỏ số 0 thành 912345678)
+        cleanPhone = "0" + cleanPhone;
+      }
+
+      // Kiểm tra lại sau khi làm sạch
+      if (!cleanPhone) {
         continue;
       }
 
@@ -171,8 +191,9 @@ function syncNewRows() {
         productId: CONFIG.PRODUCT_ID,
         warehouseId: CONFIG.WAREHOUSE_ID,
         customerName: customerName ? customerName : null,
-        phoneNumber: phoneNumber,
+        phoneNumber: cleanPhone,
         address: address ? address : null,
+        sheetNote: sheetNote ? sheetNote : null,
         createdAt: createdAtIso,
         quantity: CONFIG.DEFAULT_QUANTITY,
       };

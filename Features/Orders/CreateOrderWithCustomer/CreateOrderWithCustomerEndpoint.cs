@@ -208,6 +208,7 @@ public static class CreateOrderWithCustomerEndpoint
             Weight = 3m,
             Status = OrderStatus.New, // -2 Mới tạo
             Note = null,
+            SheetNote = null,
             CreatedAtUtc = DateTime.UtcNow,
             Items = orderItems
         };
@@ -255,6 +256,7 @@ public static class CreateOrderWithCustomerEndpoint
             Status: order.Status,
             StatusName: CreateOrderEndpoint.GetStatusDisplayName(order.Status),
             Note: order.Note,
+            SheetNote: order.SheetNote,
             GhtkId: order.GhtkId,
             EstimatedPickTime: order.EstimatedPickTime,
             EstimatedDeliverTime: order.EstimatedDeliverTime,

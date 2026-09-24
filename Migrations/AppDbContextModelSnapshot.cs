@@ -96,6 +96,10 @@ namespace ThinhPhat.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("SheetNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
                     b.Property<decimal?>("ShippingFee")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");

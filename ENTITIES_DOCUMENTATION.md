@@ -105,7 +105,8 @@ erDiagram
         string ghtk_id "Max 100, Nullable"
         string estimated_pick_time "Max 100, Nullable"
         string estimated_deliver_time "Max 100, Nullable"
-        string note "Max 500"
+        string note "Max 500, Nullable"
+        string sheet_note "Max 1000, Nullable"
         timestamptz created_at_utc
         timestamptz updated_at_utc
     }
@@ -220,6 +221,7 @@ Bảng quản lý tập trung toàn bộ vòng đời đơn hàng: từ lúc kh�
 | `estimated_pick_time`| `varchar(100)`| `NULL` | Thời gian GHTK dự kiến lấy hàng |
 | `estimated_deliver_time`| `varchar(100)`| `NULL` | Thời gian GHTK dự kiến giao hàng |
 | `note` | `varchar(500)`| `NULL` | Ghi chú đơn hàng / Ghi chú giao hàng |
+| `sheet_note` | `varchar(1000)`| `NULL` | Ghi chú đồng bộ từ Google Sheet (Cột E) |
 | `created_at_utc`| `timestamptz` | `NOT NULL`, Default: `UTC` | Thời gian tạo đơn |
 | `updated_at_utc`| `timestamptz` | `NULL` | Thời gian cập nhật đơn |
 

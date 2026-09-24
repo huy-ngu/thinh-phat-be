@@ -29,6 +29,7 @@ public sealed record UpdateOrderRequest(
     decimal? Weight = null,
     OrderStatus? Status = null,
     string? Note = null,
+    string? SheetNote = null,
     List<UpdateOrderItemRequest>? Items = null
 );
 
@@ -66,6 +67,9 @@ public sealed class UpdateOrderValidator : AbstractValidator<UpdateOrderRequest>
 
         RuleFor(x => x.Note)
             .MaximumLength(500).WithMessage("Note must not exceed 500 characters.");
+
+        RuleFor(x => x.SheetNote)
+            .MaximumLength(1000).WithMessage("Sheet note must not exceed 1000 characters.");
 
         When(x => x.Items != null && x.Items.Count > 0, () =>
         {
@@ -276,6 +280,7 @@ public static class UpdateOrderEndpoint
         order.ShippingFee = request.ShippingFee;
         order.Weight = request.Weight;
         order.Note = request.Note?.Trim();
+        order.SheetNote = request.SheetNote?.Trim();
         order.UpdatedAtUtc = DateTime.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
@@ -308,6 +313,7 @@ public static class UpdateOrderEndpoint
             Status: refreshedOrder.Status,
             StatusName: CreateOrderEndpoint.GetStatusDisplayName(refreshedOrder.Status),
             Note: refreshedOrder.Note,
+            SheetNote: refreshedOrder.SheetNote,
             GhtkId: refreshedOrder.GhtkId,
             EstimatedPickTime: refreshedOrder.EstimatedPickTime,
             EstimatedDeliverTime: refreshedOrder.EstimatedDeliverTime,
