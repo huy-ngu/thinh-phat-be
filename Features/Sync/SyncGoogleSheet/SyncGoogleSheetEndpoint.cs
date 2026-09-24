@@ -72,6 +72,8 @@ public sealed class SyncGoogleSheetValidator : AbstractValidator<SyncGoogleSheet
 public static class SyncGoogleSheetEndpoint
 {
     public const string DefaultWarehouseIdString = "d396b002-4f56-497d-b56a-ebf2e71c05e5";
+    public const string BatteryProductIdString = "e684f184-770b-4c86-a204-2eb044d72f20";
+    public static readonly Guid DefaultBatteryProductId = Guid.Parse(BatteryProductIdString);
 
     public static RouteGroupBuilder MapSyncGoogleSheet(this RouteGroupBuilder group)
     {
@@ -202,36 +204,70 @@ public static class SyncGoogleSheetEndpoint
             }
         }
 
-        // 6. Tính toán tiền và khởi tạo đơn hàng
+        // 6. Tính toán tiền và khởi tạo danh sách Order Items
         var quantity = request.Quantity > 0 ? request.Quantity : 1;
-        
+
+        // Tự động bóc tách số lượng Pin từ Cột E (SheetNote) nếu có
+        var batteryQuantity = ExtractBatteryQuantityFromSheetNote(request.SheetNote);
+
+        // Xác định Battery Product ID
+        var batteryProductIdSetting = configuration["Sync:BatteryProductId"] ?? BatteryProductIdString;
+        var targetBatteryProductId = Guid.TryParse(batteryProductIdSetting, out var parsedBatteryId)
+            ? parsedBatteryId
+            : DefaultBatteryProductId;
+
+        Product? batteryProduct = null;
+        if (batteryQuantity > 0 && request.ProductId != targetBatteryProductId)
+        {
+            batteryProduct = await db.Products
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == targetBatteryProductId, cancellationToken);
+        }
+
         // Tự động bóc tách giá tiền từ Cột E (SheetNote) nếu có (ví dụ: "GIÁ: 1.750.000đ", "giá: 2.100.000đ")
         var extractedPrice = TryExtractPriceFromSheetNote(request.SheetNote);
         decimal totalAmount;
-        decimal unitPrice;
 
         if (extractedPrice.HasValue && extractedPrice.Value > 0)
         {
             totalAmount = extractedPrice.Value;
-            unitPrice = totalAmount / quantity;
         }
         else
         {
-            unitPrice = product.Price;
-            totalAmount = unitPrice * quantity;
+            var mainTotal = product.Price * quantity;
+            var batteryTotal = (batteryProduct?.Price ?? 0m) * batteryQuantity;
+            totalAmount = mainTotal + batteryTotal;
         }
 
         var orderId = Guid.NewGuid();
+        var orderItems = new List<OrderItem>();
 
-        var orderItem = new OrderItem
+        // 1. Sản phẩm chính
+        var mainOrderItem = new OrderItem
         {
             Id = Guid.NewGuid(),
             OrderId = orderId,
             ProductId = product.Id,
             Quantity = quantity,
-            UnitPrice = unitPrice,
-            TotalPrice = totalAmount
+            UnitPrice = product.Price,
+            TotalPrice = product.Price * quantity
         };
+        orderItems.Add(mainOrderItem);
+
+        // 2. Sản phẩm Pin (nếu có bóc tách được số lượng pin > 0 và tìm thấy sản phẩm Pin trong DB)
+        if (batteryQuantity > 0 && batteryProduct != null && request.ProductId != targetBatteryProductId)
+        {
+            var batteryOrderItem = new OrderItem
+            {
+                Id = Guid.NewGuid(),
+                OrderId = orderId,
+                ProductId = batteryProduct.Id,
+                Quantity = batteryQuantity,
+                UnitPrice = batteryProduct.Price,
+                TotalPrice = batteryProduct.Price * batteryQuantity
+            };
+            orderItems.Add(batteryOrderItem);
+        }
 
         // 7. Xử lý thời gian tạo đơn: nếu có truyền từ Sheet thì lấy thời gian đó (quy đổi về UTC), nếu rỗng thì lấy thời gian hiện tại
         DateTime orderCreatedAt;
@@ -269,7 +305,7 @@ public static class SyncGoogleSheetEndpoint
             Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
             SheetNote = string.IsNullOrWhiteSpace(request.SheetNote) ? null : request.SheetNote.Trim(),
             CreatedAtUtc = orderCreatedAt,
-            Items = [orderItem]
+            Items = orderItems
         };
 
         // 8. Khởi tạo lịch sử trạng thái ban đầu
@@ -301,6 +337,45 @@ public static class SyncGoogleSheetEndpoint
         );
 
         return TypedResults.Created($"/api/v1/orders/{order.Id}", response);
+    }
+
+    /// <summary>
+    /// Bóc tách số lượng pin từ nội dung text cột E (SheetNote).
+    /// Hỗ trợ các định dạng:
+    /// - "Mua 1 Máy Thổi Lá + 2 quả Pin 20 cell + củ sạc giá: 1.250.000đ" -> 2
+    /// - "Mua 1 Máy cắt cỏ + 1 Pin 20cell + SẠC giá: 1.650.000đ" -> 1
+    /// - "Mua CƯA + Cần nối 3m + 2 Pin 20cell + Sạc giá: 2.850.000đ" -> 2
+    /// - "Mua 1 Máy Thổi Lá (Không mua pin) giá: 650.000đ" -> 0
+    /// - "Mua CƯA + Cần nối 3m (ko MUA pin sạc) GIÁ: 2.250.000đ" -> 0
+    /// - "0 pin", "không pin", "ko pin", "k pin" -> 0
+    /// </summary>
+    public static int ExtractBatteryQuantityFromSheetNote(string? sheetNote)
+    {
+        if (string.IsNullOrWhiteSpace(sheetNote))
+        {
+            return 0;
+        }
+
+        // 1. Kiểm tra trường hợp không lấy pin / không mua pin: "không pin", "ko pin", "k pin", "không mua pin", "ko mua pin", "không lấy pin", "ko lấy pin", ...
+        if (Regex.IsMatch(sheetNote, @"(?:kh[ôo]ng|ko|k)\s+(?:c[óo]\s+|mua\s+|l[ấa]y\s+|d[ùu]ng\s+|k[èe]m\s+)?pin", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        {
+            return 0;
+        }
+
+        // 2. Tìm số lượng đứng trước chữ "pin" (có thể có từ chỉ loại ở giữa: quả, cục, viên, cái, bình, ...)
+        // Ví dụ: "2 quả Pin", "1 Pin", "2 Pin 20cell", "3 viên pin", "0 pin"
+        var match = Regex.Match(
+            sheetNote,
+            @"(\d+)\s*(?:qu[ảa]|c[ụu]c|vi[êe]n|c[áa]i|b[ìi]nh)?\s*pin",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
+        );
+
+        if (match.Success && int.TryParse(match.Groups[1].Value, out var qty))
+        {
+            return qty >= 0 ? qty : 0;
+        }
+
+        return 0;
     }
 
     /// <summary>
