@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -32,6 +32,7 @@ public sealed record SyncGoogleSheetResponse(
     string? CustomerName,
     string? PhoneNumber,
     string? ProductName,
+    Guid? WarehouseId,
     decimal? TotalAmount,
     DateTime? CreatedAtUtc
 );
@@ -66,6 +67,8 @@ public sealed class SyncGoogleSheetValidator : AbstractValidator<SyncGoogleSheet
 // 3. Endpoint Slice & Handler
 public static class SyncGoogleSheetEndpoint
 {
+    public const string DefaultWarehouseIdString = "d396b002-4f56-497d-b56a-ebf2e71c05e5";
+
     public static RouteGroupBuilder MapSyncGoogleSheet(this RouteGroupBuilder group)
     {
         group.MapPost("/google-sheet", HandleAsync)
@@ -156,19 +159,38 @@ public static class SyncGoogleSheetEndpoint
             );
         }
 
-        // 5. Kiểm tra Kho hàng (nếu có truyền)
-        if (request.WarehouseId.HasValue)
+        // 5. Xác định và kiểm tra Kho hàng (Mặc định là d396b002-4f56-497d-b56a-ebf2e71c05e5 nếu không truyền)
+        var defaultWhSetting = configuration["Sync:DefaultWarehouseId"] ?? DefaultWarehouseIdString;
+        Guid? targetWarehouseId = request.WarehouseId;
+
+        if (!targetWarehouseId.HasValue && Guid.TryParse(defaultWhSetting, out var parsedDefaultWh))
+        {
+            targetWarehouseId = parsedDefaultWh;
+        }
+
+        if (targetWarehouseId.HasValue)
         {
             var warehouseExists = await db.Warehouses
-                .AnyAsync(w => w.Id == request.WarehouseId.Value, cancellationToken);
+                .AnyAsync(w => w.Id == targetWarehouseId.Value, cancellationToken);
 
             if (!warehouseExists)
             {
-                return TypedResults.Problem(
-                    statusCode: StatusCodes.Status404NotFound,
-                    title: "Warehouse Not Found",
-                    detail: $"Kho hàng với ID '{request.WarehouseId.Value}' không tồn tại."
-                );
+                if (request.WarehouseId.HasValue)
+                {
+                    return TypedResults.Problem(
+                        statusCode: StatusCodes.Status404NotFound,
+                        title: "Warehouse Not Found",
+                        detail: $"Kho hàng với ID '{targetWarehouseId.Value}' không tồn tại trong hệ thống."
+                    );
+                }
+                else
+                {
+                    // Nếu default warehouse chưa có trong DB, fallback lấy kho đầu tiên (nếu có)
+                    var fallbackWh = await db.Warehouses
+                        .Select(w => (Guid?)w.Id)
+                        .FirstOrDefaultAsync(cancellationToken);
+                    targetWarehouseId = fallbackWh;
+                }
             }
         }
 
@@ -211,7 +233,7 @@ public static class SyncGoogleSheetEndpoint
         {
             Id = orderId,
             CustomerId = customer.Id,
-            WarehouseId = request.WarehouseId,
+            WarehouseId = targetWarehouseId,
             Province = null,
             District = null,
             Ward = null,
@@ -225,7 +247,7 @@ public static class SyncGoogleSheetEndpoint
             Items = [orderItem]
         };
 
-        // 7. Khởi tạo lịch sử trạng thái ban đầu
+        // 8. Khởi tạo lịch sử trạng thái ban đầu
         var history = new OrderStatusHistory
         {
             Id = Guid.NewGuid(),
@@ -239,7 +261,7 @@ public static class SyncGoogleSheetEndpoint
         await db.OrderStatusHistories.AddAsync(history, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 
-        // 8. Trả về kết quả
+        // 9. Trả về kết quả
         var response = new SyncGoogleSheetResponse(
             Success: true,
             Message: "Đồng bộ đơn hàng từ Google Sheet thành công.",
@@ -248,6 +270,7 @@ public static class SyncGoogleSheetEndpoint
             CustomerName: customer.Name,
             PhoneNumber: customer.PhoneNumber,
             ProductName: product.Name,
+            WarehouseId: order.WarehouseId,
             TotalAmount: order.TotalAmount,
             CreatedAtUtc: order.CreatedAtUtc
         );
