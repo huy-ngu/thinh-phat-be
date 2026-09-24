@@ -103,6 +103,7 @@ public static class UpdateOrderStatusEndpoint
             CustomerId: refreshedOrder.CustomerId,
             CustomerName: refreshedOrder.Customer?.Name ?? string.Empty,
             CustomerPhone: refreshedOrder.Customer?.PhoneNumber ?? string.Empty,
+            CustomerHasOrdered: refreshedOrder.Customer?.HasOrdered ?? false,
             WarehouseId: refreshedOrder.WarehouseId,
             WarehouseName: refreshedOrder.Warehouse?.Name,
             Province: refreshedOrder.Province,

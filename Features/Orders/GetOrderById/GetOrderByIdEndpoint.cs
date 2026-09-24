@@ -52,6 +52,7 @@ public static class GetOrderByIdEndpoint
             CustomerId: order.CustomerId,
             CustomerName: order.Customer?.Name ?? string.Empty,
             CustomerPhone: order.Customer?.PhoneNumber ?? string.Empty,
+            CustomerHasOrdered: order.Customer?.HasOrdered ?? false,
             WarehouseId: order.WarehouseId,
             WarehouseName: order.Warehouse?.Name,
             Province: order.Province,
