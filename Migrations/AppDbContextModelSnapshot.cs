@@ -33,6 +33,11 @@ namespace ThinhPhat.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("timezone('utc', now())");
 
+                    b.Property<bool>("HasOrdered")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -47,6 +52,8 @@ namespace ThinhPhat.Api.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("HasOrdered");
 
                     b.HasIndex("PhoneNumber")
                         .IsUnique();

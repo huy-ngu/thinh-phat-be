@@ -19,6 +19,7 @@ public sealed record CustomerDto(
     Guid Id,
     string Name,
     string PhoneNumber,
+    bool HasOrdered,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc
 );
@@ -84,6 +85,7 @@ public static class CreateCustomerEndpoint
             Id = Guid.NewGuid(),
             Name = request.Name.Trim(),
             PhoneNumber = normalizedPhone,
+            HasOrdered = false,
             CreatedAtUtc = DateTime.UtcNow
         };
 
@@ -96,6 +98,7 @@ public static class CreateCustomerEndpoint
             Id: customer.Id,
             Name: customer.Name,
             PhoneNumber: customer.PhoneNumber,
+            HasOrdered: customer.HasOrdered,
             CreatedAtUtc: customer.CreatedAtUtc,
             UpdatedAtUtc: customer.UpdatedAtUtc
         );

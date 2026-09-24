@@ -145,14 +145,23 @@ public static class SyncGoogleSheetEndpoint
                 Id = Guid.NewGuid(),
                 Name = customerName,
                 PhoneNumber = cleanPhone,
+                HasOrdered = true, // Tạo đồng thời khi phát sinh đơn hàng từ Google Sheet
                 CreatedAtUtc = DateTime.UtcNow
             };
             await db.Customers.AddAsync(customer, cancellationToken);
         }
-        else if (customer.Name == "a" && customerName != "a")
+        else
         {
-            // Cập nhật tên mới nếu trước đó đang là tên tạm "a"
-            customer.Name = customerName;
+            if (customer.Name == "a" && customerName != "a")
+            {
+                // Cập nhật tên mới nếu trước đó đang là tên tạm "a"
+                customer.Name = customerName;
+            }
+
+            if (!customer.HasOrdered)
+            {
+                customer.HasOrdered = true;
+            }
         }
 
         // 4. Kiểm tra và lấy thông tin Sản phẩm
