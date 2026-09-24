@@ -920,7 +920,8 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
 #### 🔹 [POST] `/api/v1/sync/google-sheet`
 - **Mô tả:** Tiếp nhận Webhook từ Google Apps Script để tự động tạo đơn hàng mới khi có dòng phát sinh trên Google Sheet.
   * **Tự động bóc tách giá tiền từ Cột E (`sheetNote`):** Backend tự động nhận diện và trích xuất số tiền trong chuỗi text (ví dụ: `"Mua 1 MÁY THÁI RAU CỦ GIÁ: 1.750.000đ (Miễn phí vận chuyển)"` -> tính tổng tiền đơn = `1.750.000đ`, `"giá: 2.100.000đ"` -> `2.100.000đ`, `"Giá: 500k"` -> `500.000đ`).
-  * **Fallback linh hoạt:** Nếu Cột E để trống hoặc không chứa thông tin giá, hệ thống sẽ tự động fallback tính tiền theo giá niêm yết của sản phẩm trong Database (`product.Price * quantity`).
+  * **Tự động bóc tách số lượng Pin & thêm sản phẩm Pin vào đơn:** Backend tự động phân tích Cột E để xác định số lượng Pin (ví dụ: `"2 quả Pin 20 cell"` -> Pin: 2, `"1 Pin 20cell"` -> Pin: 1, `"(Không mua pin)"` -> Pin: 0, `"(ko MUA pin sạc)"` -> Pin: 0, `"0 pin"` -> Pin: 0) và tự động đính kèm `OrderItem` với mã Pin mặc định (`e684f184-770b-4c86-a204-2eb044d72f20`) vào đơn hàng.
+  * **Fallback linh hoạt:** Nếu Cột E để trống hoặc không chứa thông tin giá, hệ thống sẽ tự động fallback tính tiền theo giá niêm yết của các sản phẩm trong Database.
 - **Quyền hạn:** Bảo mật qua Header `X-Sync-Key` hoặc `X-Api-Key` (khóa cấu hình trong backend).
 - **Headers:**
   - `X-Sync-Key: thinhphat_gsheet_sync_secret_key_2026`
@@ -932,7 +933,7 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
     "customerName": "Nguyễn Văn A",
     "phoneNumber": "0912345678",
     "address": "123 Đường Lê Lợi, Phường Bến Nghé, Quận 1",
-    "sheetNote": "Mua 1 MÁY THÁI RAU CỦ GIÁ: 1.750.000đ (Miễn phí vận chuyển)",
+    "sheetNote": "Mua 1 Máy Thổi Lá + 2 quả Pin 20 cell + củ sạc giá: 1.250.000đ (Miễn phí vận chuyển)",
     "createdAt": "2026-09-20T13:11:26Z",
     "quantity": 1
   }
@@ -946,8 +947,8 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
     "customerId": "c1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c",
     "customerName": "Nguyễn Văn A",
     "phoneNumber": "0912345678",
-    "productName": "Sản phẩm A",
-    "totalAmount": 1750000.0,
+    "productName": "Máy Thổi Lá",
+    "totalAmount": 1250000.0,
     "createdAtUtc": "2026-09-20T13:11:26Z"
   }
   ```
