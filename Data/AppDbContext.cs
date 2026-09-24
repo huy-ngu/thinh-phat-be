@@ -93,9 +93,11 @@ public sealed class AppDbContext : DbContext
             entity.HasKey(c => c.Id);
             entity.Property(c => c.Name).HasMaxLength(150).IsRequired();
             entity.Property(c => c.PhoneNumber).HasMaxLength(20).IsRequired();
+            entity.Property(c => c.HasOrdered).HasDefaultValue(false).IsRequired();
             
             // Đảm bảo chỉ có 1 số điện thoại duy nhất trong toàn hệ thống
             entity.HasIndex(c => c.PhoneNumber).IsUnique();
+            entity.HasIndex(c => c.HasOrdered);
             
             entity.Property(c => c.CreatedAtUtc).HasDefaultValueSql("timezone('utc', now())");
         });

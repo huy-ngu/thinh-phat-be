@@ -18,7 +18,7 @@ public sealed record SyncGoogleSheetRequest(
     string PhoneNumber,
     string? CustomerName = null,
     string? Address = null,
-    DateTime? CreatedAt = null,
+    DateTimeOffset? CreatedAt = null,
     int Quantity = 1,
     Guid? WarehouseId = null,
     string? Note = null,
@@ -145,14 +145,23 @@ public static class SyncGoogleSheetEndpoint
                 Id = Guid.NewGuid(),
                 Name = customerName,
                 PhoneNumber = cleanPhone,
+                HasOrdered = true, // Tạo đồng thời khi phát sinh đơn hàng từ Google Sheet
                 CreatedAtUtc = DateTime.UtcNow
             };
             await db.Customers.AddAsync(customer, cancellationToken);
         }
-        else if (customer.Name == "a" && customerName != "a")
+        else
         {
-            // Cập nhật tên mới nếu trước đó đang là tên tạm "a"
-            customer.Name = customerName;
+            if (customer.Name == "a" && customerName != "a")
+            {
+                // Cập nhật tên mới nếu trước đó đang là tên tạm "a"
+                customer.Name = customerName;
+            }
+
+            if (!customer.HasOrdered)
+            {
+                customer.HasOrdered = true;
+            }
         }
 
         // 4. Kiểm tra và lấy thông tin Sản phẩm
@@ -269,20 +278,14 @@ public static class SyncGoogleSheetEndpoint
             orderItems.Add(batteryOrderItem);
         }
 
-        // 7. Xử lý thời gian tạo đơn: nếu có truyền từ Sheet thì lấy thời gian đó (quy đổi về UTC), nếu rỗng thì lấy thời gian hiện tại
+        // 7. Xử lý thời gian tạo đơn:
+        // Dữ liệu thời gian trên Google Sheet luôn là giờ Việt Nam (UTC+7).
+        // Ta quy đổi giờ Việt Nam về chuẩn UTC (-7 tiếng) để lưu vào CSDL.
         DateTime orderCreatedAt;
         if (request.CreatedAt.HasValue)
         {
-            var dt = request.CreatedAt.Value;
-            if (dt.Kind == DateTimeKind.Unspecified)
-            {
-                // Thời gian nhập trên Google Sheet thường là giờ Việt Nam (UTC+7) -> chuyển về chuẩn UTC
-                orderCreatedAt = DateTime.SpecifyKind(dt.AddHours(-7), DateTimeKind.Utc);
-            }
-            else
-            {
-                orderCreatedAt = dt.ToUniversalTime();
-            }
+            var dto = request.CreatedAt.Value;
+            orderCreatedAt = DateTime.SpecifyKind(dto.DateTime.AddHours(-7), DateTimeKind.Utc);
         }
         else
         {

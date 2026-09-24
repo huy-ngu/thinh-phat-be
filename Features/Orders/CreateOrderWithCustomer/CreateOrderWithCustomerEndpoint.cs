@@ -116,10 +116,15 @@ public static class CreateOrderWithCustomerEndpoint
                 Id = Guid.NewGuid(),
                 Name = request.CustomerName.Trim(),
                 PhoneNumber = normalizedPhone,
+                HasOrdered = true, // Tạo đồng thời cùng đơn hàng
                 CreatedAtUtc = DateTime.UtcNow
             };
 
             await db.Customers.AddAsync(customer, cancellationToken);
+        }
+        else if (!customer.HasOrdered)
+        {
+            customer.HasOrdered = true;
         }
 
         // 2. Kiểm tra Warehouse nếu có

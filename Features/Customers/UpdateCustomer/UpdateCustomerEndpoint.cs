@@ -99,6 +99,7 @@ public static class UpdateCustomerEndpoint
             Id: customer.Id,
             Name: customer.Name,
             PhoneNumber: customer.PhoneNumber,
+            HasOrdered: customer.HasOrdered,
             CreatedAtUtc: customer.CreatedAtUtc,
             UpdatedAtUtc: customer.UpdatedAtUtc
         );

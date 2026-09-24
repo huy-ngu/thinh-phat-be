@@ -33,6 +33,7 @@ public static class GetCustomerByIdEndpoint
                 c.Id,
                 c.Name,
                 c.PhoneNumber,
+                c.HasOrdered,
                 c.CreatedAtUtc,
                 c.UpdatedAtUtc
             ))

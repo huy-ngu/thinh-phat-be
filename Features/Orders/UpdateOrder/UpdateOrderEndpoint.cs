@@ -125,7 +125,6 @@ public static class UpdateOrderEndpoint
 
         // 1. Kiểm tra Customer
         var customer = await db.Customers
-            .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == request.CustomerId, cancellationToken);
 
         if (customer is null)
@@ -135,6 +134,11 @@ public static class UpdateOrderEndpoint
                 title: "Not Found",
                 detail: $"Customer with ID '{request.CustomerId}' does not exist."
             );
+        }
+
+        if (!customer.HasOrdered)
+        {
+            customer.HasOrdered = true;
         }
 
         // 2. Kiểm tra Warehouse

@@ -29,6 +29,7 @@ public static class GetCustomersEndpoint
     public static async Task<IResult> HandleAsync(
         AppDbContext db,
         string? search,
+        bool? hasOrdered,
         int page = 1,
         int pageSize = 20,
         CancellationToken cancellationToken = default)
@@ -43,6 +44,11 @@ public static class GetCustomersEndpoint
         };
 
         var query = db.Customers.AsNoTracking();
+
+        if (hasOrdered.HasValue)
+        {
+            query = query.Where(c => c.HasOrdered == hasOrdered.Value);
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -61,6 +67,7 @@ public static class GetCustomersEndpoint
                 c.Id,
                 c.Name,
                 c.PhoneNumber,
+                c.HasOrdered,
                 c.CreatedAtUtc,
                 c.UpdatedAtUtc
             ))

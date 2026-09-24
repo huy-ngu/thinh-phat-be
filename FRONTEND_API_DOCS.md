@@ -343,22 +343,53 @@ export interface OrderDto {
 ### 4.2 Customers (`/api/v1/customers`)
 
 #### 🔹 [GET] `/api/v1/customers`
-- **Mô tả:** Danh sách khách hàng (phân trang & tìm kiếm theo tên, SĐT).
+- **Mô tả:** Danh sách khách hàng (phân trang & tìm kiếm theo tên, SĐT, lọc theo trạng thái đã đặt hàng).
 - **Quyền hạn:** `Bearer <Token>` (Authenticated)
-- **Query Params:** `search`, `page`, `pageSize`.
-- **Response (200 OK):** `PaginatedResponse<CustomerDto>`.
+- **Query Params:**
+  - `search` *(string, optional)*: Tìm kiếm theo tên hoặc số điện thoại.
+  - `hasOrdered` *(boolean, optional)*: Lọc theo trạng thái khách đã đặt hàng hay chưa (`true` / `false`).
+  - `page` *(number, optional, default: 1)*
+  - `pageSize` *(number, optional, default: 20, max: 100)*
+- **Response (200 OK):**
+  ```json
+  {
+    "items": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "name": "Nguyễn Văn A",
+        "phoneNumber": "0912345678",
+        "hasOrdered": true,
+        "createdAtUtc": "2026-09-24T15:30:00Z",
+        "updatedAtUtc": null
+      }
+    ],
+    "totalCount": 1,
+    "page": 1,
+    "pageSize": 20
+  }
+  ```
 
 ---
 
 #### 🔹 [GET] `/api/v1/customers/{id}`
 - **Mô tả:** Lấy chi tiết khách hàng theo ID.
 - **Quyền hạn:** `Bearer <Token>` (Authenticated)
-- **Response (200 OK):** `CustomerDto`.
+- **Response (200 OK):**
+  ```json
+  {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "name": "Nguyễn Văn A",
+    "phoneNumber": "0912345678",
+    "hasOrdered": true,
+    "createdAtUtc": "2026-09-24T15:30:00Z",
+    "updatedAtUtc": null
+  }
+  ```
 
 ---
 
 #### 🔹 [POST] `/api/v1/customers`
-- **Mô tả:** Tạo khách hàng mới (Số điện thoại không được trùng).
+- **Mô tả:** Tạo khách hàng mới (Số điện thoại không được trùng). Mặc định `hasOrdered = false`.
 - **Quyền hạn:** 👑 **Admin Only**
 - **Payload:**
   ```json
@@ -367,15 +398,41 @@ export interface OrderDto {
     "phoneNumber": "0912345678"
   }
   ```
-- **Response (201 Created):** `CustomerDto`.
+- **Response (201 Created):**
+  ```json
+  {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "name": "Nguyễn Văn Khách",
+    "phoneNumber": "0912345678",
+    "hasOrdered": false,
+    "createdAtUtc": "2026-09-24T15:30:00Z",
+    "updatedAtUtc": null
+  }
+  ```
 
 ---
 
 #### 🔹 [PUT] `/api/v1/customers/{id}`
 - **Mô tả:** Cập nhật thông tin khách hàng.
 - **Quyền hạn:** 👑 **Admin Only**
-- **Payload:** `UpdateCustomerRequest`.
-- **Response (200 OK):** `CustomerDto`.
+- **Payload:**
+  ```json
+  {
+    "name": "Nguyễn Văn Khách VIP",
+    "phoneNumber": "0912345678"
+  }
+  ```
+- **Response (200 OK):**
+  ```json
+  {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "name": "Nguyễn Văn Khách VIP",
+    "phoneNumber": "0912345678",
+    "hasOrdered": true,
+    "createdAtUtc": "2026-09-24T15:30:00Z",
+    "updatedAtUtc": "2026-09-24T16:00:00Z"
+  }
+  ```
 
 ---
 
