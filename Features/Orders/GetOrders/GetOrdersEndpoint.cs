@@ -124,6 +124,7 @@ public static class GetOrdersEndpoint
             CustomerId: o.CustomerId,
             CustomerName: o.Customer?.Name ?? string.Empty,
             CustomerPhone: o.Customer?.PhoneNumber ?? string.Empty,
+            CustomerHasOrdered: o.Customer?.HasOrdered ?? false,
             WarehouseId: o.WarehouseId,
             WarehouseName: o.Warehouse?.Name,
             Province: o.Province,

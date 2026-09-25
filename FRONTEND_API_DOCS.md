@@ -528,6 +528,7 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
         "customerId": "c1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c",
         "customerName": "Nguyễn Văn Khách",
         "customerPhone": "0912345678",
+        "customerHasOrdered": true,
         "warehouseId": "8a7b6c5d-4e3f-2a1b-0c9d-8e7f6a5b4c3d",
         "warehouseName": "Kho Tổng TP.HCM",
         "province": "TP. Hồ Chí Minh",

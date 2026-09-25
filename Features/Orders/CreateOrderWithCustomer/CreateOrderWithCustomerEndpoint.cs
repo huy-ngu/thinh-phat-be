@@ -249,6 +249,7 @@ public static class CreateOrderWithCustomerEndpoint
             CustomerId: customer.Id,
             CustomerName: customer.Name,
             CustomerPhone: customer.PhoneNumber,
+            CustomerHasOrdered: customer.HasOrdered,
             WarehouseId: order.WarehouseId,
             WarehouseName: warehouseName,
             Province: order.Province,
