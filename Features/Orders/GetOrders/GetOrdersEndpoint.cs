@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -17,6 +18,8 @@ public sealed record GetOrdersResponse(
 
 public static class GetOrdersEndpoint
 {
+    private static readonly TimeSpan VnOffset = TimeSpan.FromHours(7);
+
     public static RouteGroupBuilder MapGetOrders(this RouteGroupBuilder group)
     {
         group.MapGet("/", HandleAsync)
@@ -36,8 +39,8 @@ public static class GetOrdersEndpoint
         Guid? productId,
         string? ghtkId,
         string? search,
-        DateTime? fromDate,
-        DateTime? toDate,
+        string? fromDate,
+        string? toDate,
         int page = 1,
         int pageSize = 20,
         CancellationToken cancellationToken = default)
@@ -86,14 +89,16 @@ public static class GetOrdersEndpoint
             query = query.Where(o => o.GhtkId != null && o.GhtkId.ToLower().Contains(cleanGhtkId));
         }
 
-        if (fromDate.HasValue)
+        var startUtc = ParseDateFilter(fromDate, isEndOfDay: false);
+        if (startUtc.HasValue)
         {
-            query = query.Where(o => o.CreatedAtUtc >= fromDate.Value.ToUniversalTime());
+            query = query.Where(o => o.CreatedAtUtc >= startUtc.Value);
         }
 
-        if (toDate.HasValue)
+        var endUtc = ParseDateFilter(toDate, isEndOfDay: true);
+        if (endUtc.HasValue)
         {
-            query = query.Where(o => o.CreatedAtUtc <= toDate.Value.ToUniversalTime());
+            query = query.Where(o => o.CreatedAtUtc <= endUtc.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -166,5 +171,50 @@ public static class GetOrdersEndpoint
 
         var response = new GetOrdersResponse(items, totalCount, page, pageSize);
         return TypedResults.Ok(response);
+    }
+
+    /// <summary>
+    /// Chuyển đổi linh hoạt chuỗi ngày/tháng/năm sang DateTime UTC theo múi giờ Việt Nam (+07:00).
+    /// - Nếu chỉ truyền ngày "yyyy-MM-dd":
+    ///   + isEndOfDay = false -> 00:00:00.000 GMT+7 (đầu ngày) -> quy đổi sang UTC
+    ///   + isEndOfDay = true  -> 23:59:59.999 GMT+7 (cuối ngày) -> quy đổi sang UTC
+    /// - Nếu truyền chuỗi DateTime/ISO đầy đủ (VD: "2026-09-25T14:30:00+07:00" hoặc "2026-09-25T07:30:00Z"):
+    ///   + Parse chính xác mốc thời gian đó và quy về UTC.
+    /// </summary>
+    public static DateTime? ParseDateFilter(string? input, bool isEndOfDay)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return null;
+
+        var trimmed = input.Trim();
+
+        // 1. Chỉ truyền ngày: "yyyy-MM-dd" (VD: "2026-09-25")
+        if (DateOnly.TryParseExact(trimmed, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOnly))
+        {
+            var time = isEndOfDay ? new TimeOnly(23, 59, 59, 999) : new TimeOnly(0, 0, 0, 0);
+            var localDateTime = dateOnly.ToDateTime(time);
+            var offsetDateTime = new DateTimeOffset(localDateTime, VnOffset);
+            return offsetDateTime.UtcDateTime;
+        }
+
+        // 2. Chuỗi có thông tin offset rõ ràng (VD: "+07:00", "Z")
+        if (DateTimeOffset.TryParse(trimmed, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dto))
+        {
+            return dto.UtcDateTime;
+        }
+
+        // 3. Chuỗi có ngày và giờ nhưng không có offset (VD: "2026-09-25T14:30:00") -> mặc định hiểu là giờ VN
+        if (DateTime.TryParse(trimmed, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+        {
+            if (dt.Kind == DateTimeKind.Utc)
+            {
+                return dt;
+            }
+
+            var offsetDateTime = new DateTimeOffset(dt, VnOffset);
+            return offsetDateTime.UtcDateTime;
+        }
+
+        return null;
     }
 }
