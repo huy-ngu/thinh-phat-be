@@ -515,8 +515,13 @@ Quản lý tập trung toàn bộ vòng đời đơn hàng: từ đơn khách đ
   - `productId` *(Guid, optional)*: Lọc theo sản phẩm có trong đơn.
   - `ghtkId` *(string, optional)*: Lọc theo mã vận đơn GHTK.
   - `search` *(string, optional)*: Tìm kiếm theo Địa chỉ, Tỉnh/Thành, Quận/Huyện, Phường/Xã, Tên khách hàng, SĐT, Mã GHTK, hoặc Tên sản phẩm.
-  - `fromDate` *(ISO Date string, optional)*: Từ ngày.
-  - `toDate` *(ISO Date string, optional)*: Đến ngày.
+  - `fromDate` *(string, optional)*: Thời điểm bắt đầu lọc.
+    * Hỗ trợ định dạng chỉ ngày `yyyy-MM-dd` (VD: `2026-09-25` -> tự động tính từ `00:00:00.000` giờ Việt Nam).
+    * Hỗ trợ chuỗi ISO đầy đủ (VD: `2026-09-25T08:00:00+07:00` hoặc `2026-09-24T17:00:00Z`).
+  - `toDate` *(string, optional)*: Thời điểm kết thúc lọc.
+    * Hỗ trợ định dạng chỉ ngày `yyyy-MM-dd` (VD: `2026-09-25` -> tự động tính đến hết `23:59:59.999` giờ Việt Nam).
+    * Hỗ trợ chuỗi ISO đầy đủ (VD: `2026-09-25T18:00:00+07:00` hoặc `2026-09-25T16:59:59.999Z`).
+  - *Ví dụ lấy toàn bộ đơn hàng trong ngày hôm nay (25/09/2026):* `?fromDate=2026-09-25&toDate=2026-09-25`
   - `page` *(number, optional, default: 1)*
   - `pageSize` *(number, optional, default: 20, max: 100)*
 - **Response (200 OK):**

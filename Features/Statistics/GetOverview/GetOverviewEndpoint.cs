@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -104,13 +105,16 @@ public static class GetOverviewEndpoint
 
     public static async Task<IResult> HandleAsync(
         AppDbContext db,
-        DateTime? fromDate,
-        DateTime? toDate,
+        string? fromDate,
+        string? toDate,
         CancellationToken cancellationToken = default)
     {
         // 1. Chuẩn hóa khoảng thời gian (Mặc định 30 ngày gần nhất tính theo UTC)
-        var endUtc = toDate?.ToUniversalTime() ?? DateTime.UtcNow;
-        var startUtc = fromDate?.ToUniversalTime() ?? endUtc.AddDays(-30);
+        var parsedEnd = ParseDateFilter(toDate, isEndOfDay: true);
+        var parsedStart = ParseDateFilter(fromDate, isEndOfDay: false);
+
+        var endUtc = parsedEnd ?? DateTime.UtcNow;
+        var startUtc = parsedStart ?? endUtc.AddDays(-30);
 
         if (startUtc > endUtc)
         {
@@ -253,5 +257,42 @@ public static class GetOverviewEndpoint
         );
 
         return TypedResults.Ok(response);
+    }
+
+    public static DateTime? ParseDateFilter(string? input, bool isEndOfDay)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return null;
+
+        var trimmed = input.Trim();
+
+        // 1. Chỉ truyền ngày "yyyy-MM-dd"
+        if (DateOnly.TryParseExact(trimmed, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOnly))
+        {
+            var time = isEndOfDay ? new TimeOnly(23, 59, 59, 999) : new TimeOnly(0, 0, 0, 0);
+            var localDateTime = dateOnly.ToDateTime(time);
+            var offsetDateTime = new DateTimeOffset(localDateTime, VnOffset);
+            return offsetDateTime.UtcDateTime;
+        }
+
+        // 2. Chuỗi có offset rõ ràng (+07:00, Z, v.v.)
+        if (DateTimeOffset.TryParse(trimmed, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dto))
+        {
+            return dto.UtcDateTime;
+        }
+
+        // 3. Chuỗi có ngày và giờ nhưng không có offset (VD: "2026-09-25T14:30:00")
+        if (DateTime.TryParse(trimmed, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+        {
+            if (dt.Kind == DateTimeKind.Utc)
+            {
+                return dt;
+            }
+
+            var offsetDateTime = new DateTimeOffset(dt, VnOffset);
+            return offsetDateTime.UtcDateTime;
+        }
+
+        return null;
     }
 }
